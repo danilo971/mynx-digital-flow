@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -62,13 +61,15 @@ const POSPage = () => {
   const productSearch = watch('productSearch');
   const quantity = watch('quantity');
   
-  // Search for products
+  // Search for products - Fixed to safely handle undefined productSearch
   useEffect(() => {
-    if (productSearch.trim().length > 0) {
+    // Add null check before calling trim()
+    const searchTerm = productSearch || '';
+    if (searchTerm.trim().length > 0) {
       const results = mockProducts.filter(product => 
-        product.name.toLowerCase().includes(productSearch.toLowerCase()) || 
-        product.code.toLowerCase().includes(productSearch.toLowerCase()) || 
-        product.barcode.includes(productSearch)
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        product.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        product.barcode.includes(searchTerm)
       );
       setSearchResults(results);
       setIsSearching(true);
