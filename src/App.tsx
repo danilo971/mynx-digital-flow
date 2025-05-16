@@ -19,12 +19,28 @@ import UsersPage from "./pages/UsersPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 import SignupPage from "./pages/SignupPage";
+import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
