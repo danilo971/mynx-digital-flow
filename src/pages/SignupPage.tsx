@@ -1,9 +1,9 @@
 
 import { useState } from 'react';
-import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,17 +11,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/useAuthStore';
 
 type FormData = {
+  name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 };
 
-const LoginPage = () => {
-  const { isAuthenticated, login } = useAuthStore();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>();
+const SignupPage = () => {
+  const { isAuthenticated, signup } = useAuthStore();
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>();
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-
+  
   // Redirect if already authenticated
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -29,26 +32,35 @@ const LoginPage = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const success = await login(data.email, data.password);
+      if (data.password !== data.confirmPassword) {
+        toast({
+          variant: "destructive",
+          title: "As senhas não coincidem",
+          description: "Por favor, verifique se as senhas são iguais.",
+        });
+        return;
+      }
+      
+      const success = await signup(data.email, data.password, data.name);
       
       if (success) {
         toast({
-          title: "Login bem-sucedido",
-          description: "Bem-vindo de volta!",
+          title: "Cadastro bem-sucedido",
+          description: "Sua conta foi criada com sucesso.",
         });
         navigate('/');
       } else {
         toast({
           variant: "destructive",
-          title: "Falha no login",
-          description: "E-mail ou senha incorretos.",
+          title: "Falha no cadastro",
+          description: "Não foi possível criar sua conta. Tente novamente.",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Ocorreu um erro no login. Tente novamente.",
+        description: "Ocorreu um erro no cadastro. Tente novamente.",
       });
     }
   };
@@ -68,15 +80,31 @@ const LoginPage = () => {
             transition={{ delay: 0.2, type: "spring", stiffness: 150 }}
             className="rounded-full bg-primary p-2"
           >
-            <LogIn className="h-6 w-6 text-white" />
+            <UserPlus className="h-6 w-6 text-white" />
           </motion.div>
           <h1 className="text-2xl font-bold tracking-tight">Myn Digital</h1>
           <p className="text-sm text-muted-foreground">
-            Entre com suas credenciais para acessar o sistema
+            Crie sua conta para acessar o sistema
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome</Label>
+            <Input
+              id="name"
+              placeholder="Seu nome completo"
+              type="text"
+              autoComplete="name"
+              {...register("name", { 
+                required: "Nome é obrigatório",
+              })}
+            />
+            {errors.name && (
+              <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
+            )}
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input
@@ -120,12 +148,12 @@ const LoginPage = () => {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 {...register("password", { 
                   required: "Senha é obrigatória",
                   minLength: {
-                    value: 5,
-                    message: "Senha deve ter pelo menos 5 caracteres"
+                    value: 6,
+                    message: "Senha deve ter pelo menos 6 caracteres"
                   }
                 })}
               />
@@ -135,10 +163,40 @@ const LoginPage = () => {
             )}
           </div>
           
-          <div className="text-sm text-right">
-            <a href="#" className="text-primary hover:underline">
-              Esqueceu a senha?
-            </a>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <button 
+                type="button" 
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="text-xs text-primary hover:underline"
+              >
+                {showConfirmPassword ? (
+                  <span className="flex items-center">
+                    <EyeOff className="h-3 w-3 mr-1" /> Ocultar
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <Eye className="h-3 w-3 mr-1" /> Mostrar
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                autoComplete="new-password"
+                {...register("confirmPassword", { 
+                  required: "Confirmação de senha é obrigatória",
+                  validate: value => 
+                    value === watch('password') || "As senhas não coincidem"
+                })}
+              />
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-xs text-destructive mt-1">{errors.confirmPassword.message}</p>
+            )}
           </div>
           
           <Button
@@ -146,25 +204,21 @@ const LoginPage = () => {
             className="w-full"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Entrando..." : "Entrar"}
+            {isSubmitting ? "Cadastrando..." : "Cadastrar"}
           </Button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-xs text-muted-foreground">
-            Não tem uma conta?{" "}
-            <Link to="/signup" className="text-primary hover:underline">
-              Cadastre-se
+          <p className="text-sm text-muted-foreground">
+            Já possui uma conta?{" "}
+            <Link to="/login" className="text-primary hover:underline">
+              Entrar
             </Link>
           </p>
         </div>
       </motion.div>
-
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        Use admin@example.com / password para testar como administrador
-      </p>
     </div>
   );
 };
 
-export default LoginPage;
+export default SignupPage;

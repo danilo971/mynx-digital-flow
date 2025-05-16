@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Edit, Trash2, FileText, Package, ArrowUpDown, Filter, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,66 +15,37 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-// Mock products data
-const mockProducts = [
-  { 
-    id: 1, 
-    code: 'A001', 
-    name: 'Produto A', 
-    barcode: '7890123456789', 
-    price: 29.90, 
-    stock: 120,
-    category: 'Categoria 1' 
-  },
-  { 
-    id: 2, 
-    code: 'B002', 
-    name: 'Produto B', 
-    barcode: '7890123456790', 
-    price: 49.90, 
-    stock: 75,
-    category: 'Categoria 2' 
-  },
-  { 
-    id: 3, 
-    code: 'C003', 
-    name: 'Produto C', 
-    barcode: '7890123456791', 
-    price: 99.90, 
-    stock: 50,
-    category: 'Categoria 1' 
-  },
-  { 
-    id: 4, 
-    code: 'D004', 
-    name: 'Produto D', 
-    barcode: '7890123456792', 
-    price: 19.90, 
-    stock: 200,
-    category: 'Categoria 3' 
-  },
-  { 
-    id: 5, 
-    code: 'E005', 
-    name: 'Produto E', 
-    barcode: '7890123456793', 
-    price: 149.90, 
-    stock: 30,
-    category: 'Categoria 2' 
-  },
-];
+import { useToast } from '@/hooks/use-toast';
+import { Product, productService } from '@/services/productService';
+import { useQuery } from '@tanstack/react-query';
 
 const ProductsPage = () => {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const { toast } = useToast();
+  
+  // Carregar produtos usando React Query
+  const { data: products, isLoading, error, refetch } = useQuery({
+    queryKey: ['products'],
+    queryFn: productService.getAllProducts,
+  });
+  
+  useEffect(() => {
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar produtos",
+        description: "Não foi possível carregar a lista de produtos.",
+      });
+    }
+  }, [error, toast]);
   
   // Filter products by search term
-  const filteredProducts = mockProducts.filter(product => 
+  const filteredProducts = (products || []).filter(product => 
     product.name.toLowerCase().includes(search.toLowerCase()) ||
     product.code.toLowerCase().includes(search.toLowerCase()) ||
-    product.barcode.includes(search)
+    (product.barcode && product.barcode.includes(search))
   );
   
   // Sort products
@@ -109,6 +80,24 @@ const ProductsPage = () => {
     }
   };
   
+  // Manipuladores de eventos para CRUD
+  const handleDeleteProduct = async (id: number) => {
+    try {
+      await productService.deleteProduct(id);
+      toast({
+        title: "Produto excluído",
+        description: "O produto foi excluído com sucesso.",
+      });
+      refetch(); // Recarregar a lista após exclusão
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir produto",
+        description: "Não foi possível excluir o produto.",
+      });
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -139,7 +128,9 @@ const ProductsPage = () => {
           <CardHeader>
             <CardTitle>Catálogo de Produtos</CardTitle>
             <CardDescription>
-              Total de {filteredProducts.length} produtos encontrados
+              {isLoading 
+                ? "Carregando produtos..." 
+                : `Total de ${filteredProducts.length} produtos encontrados`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -241,7 +232,13 @@ const ProductsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedProducts.length > 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        Carregando produtos...
+                      </TableCell>
+                    </TableRow>
+                  ) : sortedProducts.length > 0 ? (
                     sortedProducts.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell className="font-medium">{product.code}</TableCell>
@@ -306,7 +303,10 @@ const ProductsPage = () => {
                                 Detalhes
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive focus:text-destructive">
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => product.id && handleDeleteProduct(product.id)}
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
                               </DropdownMenuItem>

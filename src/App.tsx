@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuthStore } from "./store/useAuthStore";
+import { useAuthStore, initAuth } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
 
 // Pages
@@ -18,6 +18,7 @@ import ReportsPage from "./pages/ReportsPage";
 import UsersPage from "./pages/UsersPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
+import SignupPage from "./pages/SignupPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   const { theme } = useThemeStore();
+  
+  // Inicializa a autenticação
+  useEffect(() => {
+    initAuth();
+  }, []);
   
   // Apply theme class to html element
   useEffect(() => {
@@ -52,6 +58,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
             
             {/* Protected routes */}
             <Route path="/" element={
