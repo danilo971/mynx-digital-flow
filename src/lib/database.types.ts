@@ -10,32 +10,6 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          name: string
-          email: string
-          role: string
-          avatar_url: string | null
-          created_at: string
-        }
-        Insert: {
-          id: string
-          name: string
-          email: string
-          role?: string
-          avatar_url?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          email?: string
-          role?: string
-          avatar_url?: string | null
-          created_at?: string
-        }
-      }
       products: {
         Row: {
           id: number
@@ -46,21 +20,23 @@ export interface Database {
           stock: number
           category: string
           image_url: string | null
-          created_at: string
+          created_at: string | null
           updated_at: string | null
         }
         Insert: {
+          id?: number
           code: string
           name: string
-          barcode: string
+          barcode?: string
           price: number
           stock: number
           category: string
           image_url?: string | null
-          created_at?: string
+          created_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          id?: number
           code?: string
           name?: string
           barcode?: string
@@ -68,6 +44,39 @@ export interface Database {
           stock?: number
           category?: string
           image_url?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      profiles: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          avatar_url: string | null
+          role: string
+          active: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id: string
+          name: string
+          email: string
+          avatar_url?: string | null
+          role?: string
+          active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          avatar_url?: string | null
+          role?: string
+          active?: boolean | null
+          created_at?: string | null
           updated_at?: string | null
         }
       }

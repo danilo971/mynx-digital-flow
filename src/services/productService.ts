@@ -1,5 +1,5 @@
 
-import { supabase } from '@/lib/supabase';
+import { supabase, handleApiError } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 export interface Product {
@@ -17,6 +17,53 @@ export const productService = {
   // Obter todos os produtos
   async getAllProducts(): Promise<Product[]> {
     try {
+      console.log('Buscando todos os produtos...');
+      
+      // Verifica se a tabela "products" existe
+      const { data: tablesData, error: tablesError } = await supabase
+        .from('products')
+        .select('*')
+        .limit(1);
+      
+      // Se houver erro de tabela não existente, retorna array vazio e mostra toast
+      if (tablesError && tablesError.code === '42P01') {
+        console.error('Tabela products não existe:', tablesError);
+        toast.error('Tabela de produtos não encontrada. Por favor, crie a tabela products no Supabase.');
+        
+        // Retornar dados mockados para demonstração se a tabela não existir
+        console.log('Retornando dados mockados para demonstração...');
+        return [
+          { 
+            id: 1, 
+            code: "P001", 
+            name: "Produto Demo 1", 
+            barcode: "7891234567890", 
+            price: 99.90, 
+            stock: 120, 
+            category: "Categoria 1" 
+          },
+          { 
+            id: 2, 
+            code: "P002", 
+            name: "Produto Demo 2", 
+            barcode: "7891234567891", 
+            price: 149.90, 
+            stock: 45, 
+            category: "Categoria 2" 
+          },
+          { 
+            id: 3, 
+            code: "P003", 
+            name: "Produto Demo 3", 
+            barcode: "7891234567892", 
+            price: 199.90, 
+            stock: 30, 
+            category: "Categoria 1" 
+          }
+        ];
+      }
+
+      // Continua normalmente se a tabela existir
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -39,6 +86,7 @@ export const productService = {
   // Obter um produto pelo ID
   async getProductById(id: number): Promise<Product | null> {
     try {
+      console.log(`Buscando produto ${id}...`);
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -62,6 +110,14 @@ export const productService = {
   // Adicionar um novo produto
   async createProduct(product: Product): Promise<Product | null> {
     try {
+      console.log('Criando produto:', product);
+      
+      // Verificando se todos os campos obrigatórios estão presentes
+      if (!product.code || !product.name || !product.price) {
+        toast.error('Preencha todos os campos obrigatórios');
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -78,16 +134,27 @@ export const productService = {
         .single();
 
       if (error) {
+        // Se houver erro de tabela não existente, mostra toast específico
+        if (error.code === '42P01') {
+          console.error('Tabela products não existe:', error);
+          toast.error('Tabela de produtos não encontrada. Por favor, crie a tabela products no Supabase.');
+          alert('Tabela de produtos não encontrada. Por favor, crie a tabela products no Supabase.');
+          return null;
+        }
+        
         console.error('Erro ao criar produto:', error);
         toast.error(`Erro ao criar produto: ${error.message}`);
+        alert(`Erro ao criar produto: ${error.message}`);
         return null;
       }
 
       toast.success('Produto cadastrado com sucesso');
+      alert('Produto cadastrado com sucesso');
       return data;
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro inesperado ao criar produto:', e);
-      toast.error('Erro ao criar produto');
+      toast.error(`Erro ao criar produto: ${e?.message || 'Erro desconhecido'}`);
+      alert(`Erro ao criar produto: ${e?.message || 'Erro desconhecido'}`);
       return null;
     }
   },

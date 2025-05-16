@@ -17,3 +17,12 @@ export const supabase = createClient<Database>(
     }
   }
 );
+
+// Utility function to handle API errors
+export const handleApiError = (error: any, message: string) => {
+  console.error(`${message}:`, error);
+  if (typeof window !== 'undefined') {
+    alert(`Erro: ${message}. ${error?.message || 'Tente novamente mais tarde.'}`);
+  }
+  return null;
+};

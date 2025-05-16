@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Edit, Trash2, FileText, Package, ArrowUpDown, Filter, UploadCloud } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, FileText, Package, ArrowUpDown, Filter, UploadCloud, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,22 +17,36 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Product, productService } from '@/services/productService';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const ProductsPage = () => {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    code: '',
+    name: '',
+    barcode: '',
+    price: 0,
+    stock: 0,
+    category: 'Categoria 1',
+  });
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Carregar produtos usando React Query
-  const { data: products, isLoading, error, refetch } = useQuery({
+  const { data: products = [], isLoading, error } = useQuery({
     queryKey: ['products'],
     queryFn: productService.getAllProducts,
   });
   
   useEffect(() => {
     if (error) {
+      console.error('Erro ao carregar produtos:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar produtos",
@@ -42,7 +56,7 @@ const ProductsPage = () => {
   }, [error, toast]);
   
   // Filter products by search term
-  const filteredProducts = (products || []).filter(product => 
+  const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(search.toLowerCase()) ||
     product.code.toLowerCase().includes(search.toLowerCase()) ||
     (product.barcode && product.barcode.includes(search))
@@ -80,23 +94,86 @@ const ProductsPage = () => {
     }
   };
   
-  // Manipuladores de eventos para CRUD
-  const handleDeleteProduct = async (id: number) => {
+  // Handle product creation
+  const handleAddProduct = async () => {
     try {
-      await productService.deleteProduct(id);
-      toast({
-        title: "Produto excluído",
-        description: "O produto foi excluído com sucesso.",
+      console.log('Adicionando novo produto:', newProduct);
+      
+      if (!newProduct.name || !newProduct.code) {
+        toast({
+          variant: "destructive",
+          title: "Campos obrigatórios",
+          description: "Preencha todos os campos obrigatórios.",
+        });
+        return;
+      }
+      
+      setSubmitting(true);
+      
+      const result = await productService.createProduct({
+        ...newProduct,
+        price: Number(newProduct.price),
+        stock: Number(newProduct.stock)
       });
-      refetch(); // Recarregar a lista após exclusão
+      
+      if (result) {
+        toast({
+          title: "Produto adicionado",
+          description: "O produto foi adicionado com sucesso.",
+        });
+        
+        // Refresh product list
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+        
+        setShowAddProductDialog(false);
+        setNewProduct({
+          code: '',
+          name: '',
+          barcode: '',
+          price: 0,
+          stock: 0,
+          category: 'Categoria 1',
+        });
+      }
     } catch (error) {
+      console.error('Erro ao adicionar produto:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar produto",
+        description: "Não foi possível criar o novo produto.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  // Delete product
+  const handleDeleteProduct = useCallback(async (id: number) => {
+    try {
+      console.log(`Excluindo produto ${id}...`);
+      
+      if (window.confirm('Tem certeza que deseja excluir este produto?')) {
+        const success = await productService.deleteProduct(id);
+        
+        if (success) {
+          toast({
+            title: "Produto excluído",
+            description: "O produto foi excluído com sucesso.",
+          });
+          
+          // Refresh product list
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error);
       toast({
         variant: "destructive",
         title: "Erro ao excluir produto",
         description: "Não foi possível excluir o produto.",
       });
     }
-  };
+  }, [toast, queryClient]);
   
   return (
     <div className="space-y-6">
@@ -112,7 +189,7 @@ const ProductsPage = () => {
             <UploadCloud className="mr-2 h-4 w-4" />
             Importar
           </Button>
-          <Button>
+          <Button onClick={() => setShowAddProductDialog(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Produto
           </Button>
@@ -235,7 +312,10 @@ const ProductsPage = () => {
                   {isLoading ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center">
-                        Carregando produtos...
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                          Carregando produtos...
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : sortedProducts.length > 0 ? (
@@ -328,6 +408,122 @@ const ProductsPage = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Add Product Dialog */}
+      <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Produto</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para adicionar um novo produto ao catálogo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="code" className="text-right">
+                Código
+              </Label>
+              <Input
+                id="code"
+                value={newProduct.code}
+                onChange={(e) => setNewProduct({...newProduct, code: e.target.value})}
+                className="col-span-3"
+                placeholder="P001"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="name"
+                value={newProduct.name}
+                onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                className="col-span-3"
+                placeholder="Nome do produto"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="barcode" className="text-right">
+                Código de barras
+              </Label>
+              <Input
+                id="barcode"
+                value={newProduct.barcode}
+                onChange={(e) => setNewProduct({...newProduct, barcode: e.target.value})}
+                className="col-span-3"
+                placeholder="7891234567890"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="price" className="text-right">
+                Preço (R$)
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={newProduct.price}
+                onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                className="col-span-3"
+                placeholder="99.90"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stock" className="text-right">
+                Estoque
+              </Label>
+              <Input
+                id="stock"
+                type="number"
+                min="0"
+                value={newProduct.stock}
+                onChange={(e) => setNewProduct({...newProduct, stock: Number(e.target.value)})}
+                className="col-span-3"
+                placeholder="100"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">
+                Categoria
+              </Label>
+              <select
+                id="category"
+                value={newProduct.category}
+                onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="Categoria 1">Categoria 1</option>
+                <option value="Categoria 2">Categoria 2</option>
+                <option value="Categoria 3">Categoria 3</option>
+                <option value="Categoria 4">Categoria 4</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAddProductDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAddProduct}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>Adicionar Produto</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Edit, Trash2, UserCheck, UserX, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, UserCheck, UserX, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,85 +17,146 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock users data
-const mockUsers = [
-  { 
-    id: 1, 
-    name: 'Admin User',
-    email: 'admin@example.com',
-    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=8B5CF6&color=fff',
-    role: 'Administrador',
-    active: true,
-    permissions: {
-      dashboard: true,
-      pos: true,
-      sales: true,
-      products: true,
-      reports: true,
-      users: true,
-    }
-  },
-  { 
-    id: 2, 
-    name: 'John Doe',
-    email: 'john@example.com',
-    avatar: 'https://ui-avatars.com/api/?name=John+Doe&background=8B5CF6&color=fff',
-    role: 'Gerente',
-    active: true,
-    permissions: {
-      dashboard: true,
-      pos: true,
-      sales: true,
-      products: true,
-      reports: true,
-      users: false,
-    }
-  },
-  { 
-    id: 3, 
-    name: 'Sarah Smith',
-    email: 'sarah@example.com',
-    avatar: 'https://ui-avatars.com/api/?name=Sarah+Smith&background=8B5CF6&color=fff',
-    role: 'Vendedor',
-    active: true,
-    permissions: {
-      dashboard: true,
-      pos: true,
-      sales: true,
-      products: false,
-      reports: false,
-      users: false,
-    }
-  },
-  { 
-    id: 4, 
-    name: 'Michael Brown',
-    email: 'michael@example.com',
-    avatar: 'https://ui-avatars.com/api/?name=Michael+Brown&background=8B5CF6&color=fff',
-    role: 'Estoquista',
-    active: false,
-    permissions: {
-      dashboard: true,
-      pos: false,
-      sales: false,
-      products: true,
-      reports: false,
-      users: false,
-    }
-  },
-];
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { userService, UserProfile } from '@/services/userService';
 
 const UsersPage = () => {
   const [search, setSearch] = useState('');
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'user' });
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   
+  // Fetch users on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const data = await userService.getAllUsers();
+        setUsers(data);
+      } catch (error) {
+        console.error('Erro ao buscar usuários:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar usuários",
+          description: "Não foi possível obter a lista de usuários.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUsers();
+  }, [toast]);
+  
   // Filter users by search term
-  const filteredUsers = mockUsers.filter(user => 
+  const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(search.toLowerCase()) ||
     user.email.toLowerCase().includes(search.toLowerCase()) ||
     user.role.toLowerCase().includes(search.toLowerCase())
   );
+  
+  // Handle new user creation
+  const handleAddUser = async () => {
+    try {
+      console.log('Adicionando novo usuário:', newUser);
+      
+      if (!newUser.name || !newUser.email || !newUser.password) {
+        toast({
+          variant: "destructive",
+          title: "Campos obrigatórios",
+          description: "Preencha todos os campos obrigatórios.",
+        });
+        return;
+      }
+      
+      setSubmitting(true);
+      
+      const result = await userService.createUser(
+        newUser.name,
+        newUser.email,
+        newUser.password,
+        newUser.role
+      );
+      
+      if (result) {
+        toast({
+          title: "Usuário adicionado",
+          description: "O novo usuário foi criado com sucesso.",
+        });
+        
+        // Add new user to the list or refresh the list
+        setUsers(prev => [result, ...prev]);
+        setShowAddUserDialog(false);
+        setNewUser({ name: '', email: '', password: '', role: 'user' });
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar usuário:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar usuário",
+        description: "Não foi possível criar o novo usuário.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  // Handle user status toggle
+  const handleToggleUserStatus = async (user: UserProfile) => {
+    try {
+      const newStatus = !user.active;
+      const result = await userService.updateUser(user.id, { active: newStatus });
+      
+      if (result) {
+        toast({
+          title: newStatus ? "Usuário ativado" : "Usuário desativado",
+          description: `${user.name} foi ${newStatus ? 'ativado' : 'desativado'} com sucesso.`,
+        });
+        
+        // Update user in the list
+        setUsers(prev => 
+          prev.map(u => u.id === user.id ? { ...u, active: newStatus } : u)
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status do usuário:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar status",
+        description: "Não foi possível atualizar o status do usuário.",
+      });
+    }
+  };
+  
+  // Handle user deletion
+  const handleDeleteUser = async (id: string, name: string) => {
+    try {
+      if (window.confirm(`Tem certeza que deseja excluir o usuário ${name}?`)) {
+        const success = await userService.deleteUser(id);
+        
+        if (success) {
+          toast({
+            title: "Usuário excluído",
+            description: `${name} foi excluído com sucesso.`,
+          });
+          
+          // Remove user from the list
+          setUsers(prev => prev.filter(user => user.id !== id));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir usuário",
+        description: "Não foi possível excluir o usuário.",
+      });
+    }
+  };
   
   return (
     <div className="space-y-6">
@@ -106,7 +167,10 @@ const UsersPage = () => {
             Gerenciamento de usuários e permissões
           </p>
         </div>
-        <Button className="mt-4 sm:mt-0">
+        <Button 
+          className="mt-4 sm:mt-0"
+          onClick={() => setShowAddUserDialog(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Novo Usuário
         </Button>
@@ -121,7 +185,7 @@ const UsersPage = () => {
           <CardHeader>
             <CardTitle>Usuários do Sistema</CardTitle>
             <CardDescription>
-              Total de {filteredUsers.length} usuários encontrados
+              {loading ? 'Carregando usuários...' : `Total de ${filteredUsers.length} usuários encontrados`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -149,13 +213,22 @@ const UsersPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length > 0 ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                          Carregando usuários...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredUsers.length > 0 ? (
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                              <AvatarImage src={user.avatar} alt={user.name} />
+                              <AvatarImage src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=8B5CF6&color=fff`} alt={user.name} />
                               <AvatarFallback>
                                 {user.name.charAt(0)}
                               </AvatarFallback>
@@ -172,7 +245,7 @@ const UsersPage = () => {
                           <Badge variant="outline">{user.role}</Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          {user.active ? (
+                          {user.active !== false ? (
                             <Badge className="bg-green-500 hover:bg-green-600">
                               <UserCheck className="mr-1 h-3 w-3" />
                               Ativo
@@ -193,7 +266,7 @@ const UsersPage = () => {
                               </span>
                             </div>
                             <div className="group relative">
-                              {user.permissions.pos ? (
+                              {user.role === 'admin' || user.permissions?.pos ? (
                                 <div className="w-2 h-2 rounded-full bg-primary"></div>
                               ) : (
                                 <div className="w-2 h-2 rounded-full bg-muted"></div>
@@ -203,7 +276,7 @@ const UsersPage = () => {
                               </span>
                             </div>
                             <div className="group relative">
-                              {user.permissions.sales ? (
+                              {user.role === 'admin' || user.permissions?.sales ? (
                                 <div className="w-2 h-2 rounded-full bg-primary"></div>
                               ) : (
                                 <div className="w-2 h-2 rounded-full bg-muted"></div>
@@ -213,7 +286,7 @@ const UsersPage = () => {
                               </span>
                             </div>
                             <div className="group relative">
-                              {user.permissions.products ? (
+                              {user.role === 'admin' || user.permissions?.products ? (
                                 <div className="w-2 h-2 rounded-full bg-primary"></div>
                               ) : (
                                 <div className="w-2 h-2 rounded-full bg-muted"></div>
@@ -223,7 +296,7 @@ const UsersPage = () => {
                               </span>
                             </div>
                             <div className="group relative">
-                              {user.permissions.reports ? (
+                              {user.role === 'admin' || user.permissions?.reports ? (
                                 <div className="w-2 h-2 rounded-full bg-primary"></div>
                               ) : (
                                 <div className="w-2 h-2 rounded-full bg-muted"></div>
@@ -233,7 +306,7 @@ const UsersPage = () => {
                               </span>
                             </div>
                             <div className="group relative">
-                              {user.permissions.users ? (
+                              {user.role === 'admin' ? (
                                 <div className="w-2 h-2 rounded-full bg-primary"></div>
                               ) : (
                                 <div className="w-2 h-2 rounded-full bg-muted"></div>
@@ -274,6 +347,7 @@ const UsersPage = () => {
                                     title: "Editar usuário",
                                     description: `Editando ${user.name}`,
                                   });
+                                  // Implementação futura
                                 }}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
@@ -286,26 +360,16 @@ const UsersPage = () => {
                                 Permissões
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {user.active ? (
+                              {user.active !== false ? (
                                 <DropdownMenuItem
-                                  onClick={() => {
-                                    toast({
-                                      title: "Usuário desativado",
-                                      description: `${user.name} foi desativado`,
-                                    });
-                                  }}
+                                  onClick={() => handleToggleUserStatus(user)}
                                 >
                                   <XCircle className="mr-2 h-4 w-4" />
                                   Desativar
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
-                                  onClick={() => {
-                                    toast({
-                                      title: "Usuário ativado",
-                                      description: `${user.name} foi ativado`,
-                                    });
-                                  }}
+                                  onClick={() => handleToggleUserStatus(user)}
                                 >
                                   <CheckCircle2 className="mr-2 h-4 w-4" />
                                   Ativar
@@ -314,13 +378,7 @@ const UsersPage = () => {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onClick={() => {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "Excluir usuário",
-                                    description: `${user.name} foi excluído`,
-                                  });
-                                }}
+                                onClick={() => handleDeleteUser(user.id, user.name)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
@@ -343,6 +401,94 @@ const UsersPage = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Add User Dialog */}
+      <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para adicionar um novo usuário ao sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                className="col-span-3"
+                placeholder="Nome completo"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                className="col-span-3"
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">
+                Senha
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                className="col-span-3"
+                placeholder="Senha segura"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="role" className="text-right">
+                Função
+              </Label>
+              <select
+                id="role"
+                value={newUser.role}
+                onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="user">Usuário</option>
+                <option value="admin">Administrador</option>
+                <option value="manager">Gerente</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAddUserDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAddUser}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>Adicionar Usuário</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
