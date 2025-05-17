@@ -21,7 +21,7 @@ export function useProducts() {
     setLoading(true);
     try {
       const data = await productService.getAllProducts();
-      setProducts(data);
+      setProducts(data || []);  // Ensure we always have an array, even if data is null
     } catch (error) {
       console.error('Error fetching products:', error);
       toast({
@@ -29,6 +29,7 @@ export function useProducts() {
         title: "Erro ao carregar produtos",
         description: "Não foi possível obter a lista de produtos.",
       });
+      setProducts([]); // Set to empty array on error
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Product } from '@/hooks/useProducts';
 import { SALES_UNITS } from '@/lib/supabase';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProductFormModalProps {
   open: boolean;
@@ -61,8 +62,8 @@ export function ProductFormModal({
     }
   }, [product]);
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target as HTMLInputElement;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
     
     // Convert to number for price and stock fields
     if (type === 'number') {
@@ -77,13 +78,21 @@ export function ProductFormModal({
       });
     }
   };
+
+  const handleCategoryChange = (value: string) => {
+    setFormData({
+      ...formData,
+      category: value
+    });
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await onSubmit(formData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting form:', error);
+      alert(`Erro ao salvar produto: ${error?.message || 'Erro desconhecido'}`);
     }
   };
   
@@ -127,7 +136,7 @@ export function ProductFormModal({
                 value={formData.barcode}
                 onChange={handleChange}
                 className="col-span-3"
-                // Not required
+                // Not required per requirements
               />
             </div>
             
@@ -162,19 +171,19 @@ export function ProductFormModal({
             
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category" className="text-right">Unidade</Label>
-              <select
-                id="category"
-                name="category"
+              <Select
                 value={formData.category}
-                onChange={handleChange}
-                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                required
+                onValueChange={handleCategoryChange}
               >
-                <option value="">Selecione a unidade</option>
-                {SALES_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>{unit}</option>
-                ))}
-              </select>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {SALES_UNITS.map((unit) => (
+                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">

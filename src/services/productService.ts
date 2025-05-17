@@ -1,19 +1,14 @@
 
 import { supabase, handleApiError, SALES_UNITS } from '@/lib/supabase';
+import { Database } from '@/lib/database.types';
+
+export type Product = Database['public']['Tables']['products']['Row'];
 
 export const productService = {
   /**
    * Create a new product
    */
-  async createProduct(productData: {
-    code: string;
-    name: string;
-    barcode?: string | null;
-    price: number;
-    stock: number;
-    category: string;
-    image_url?: string | null;
-  }) {
+  async createProduct(productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
     try {
       console.log('Criando produto:', productData);
       
@@ -34,24 +29,28 @@ export const productService = {
   /**
    * Get all products
    */
-  async getAllProducts() {
+  async getAllProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('name');
       
-      if (error) return handleApiError(error, 'Erro ao buscar produtos');
+      if (error) {
+        handleApiError(error, 'Erro ao buscar produtos');
+        return [];
+      }
       return data || [];
     } catch (error) {
-      return handleApiError(error, 'Erro ao buscar produtos');
+      handleApiError(error, 'Erro ao buscar produtos');
+      return [];
     }
   },
   
   /**
    * Get a product by id
    */
-  async getProductById(id: number) {
+  async getProductById(id: number): Promise<Product | null> {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -59,25 +58,21 @@ export const productService = {
         .eq('id', id)
         .single();
       
-      if (error) return handleApiError(error, 'Erro ao buscar produto');
+      if (error) {
+        handleApiError(error, 'Erro ao buscar produto');
+        return null;
+      }
       return data;
     } catch (error) {
-      return handleApiError(error, 'Erro ao buscar produto');
+      handleApiError(error, 'Erro ao buscar produto');
+      return null;
     }
   },
   
   /**
    * Update a product
    */
-  async updateProduct(id: number, productData: Partial<{
-    code: string;
-    name: string;
-    barcode?: string | null;
-    price: number;
-    stock: number;
-    category: string;
-    image_url?: string | null;
-  }>) {
+  async updateProduct(id: number, productData: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>): Promise<Product | null> {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -85,17 +80,21 @@ export const productService = {
         .eq('id', id)
         .select();
       
-      if (error) return handleApiError(error, 'Erro ao atualizar produto');
+      if (error) {
+        handleApiError(error, 'Erro ao atualizar produto');
+        return null;
+      }
       return data?.[0] || null;
     } catch (error) {
-      return handleApiError(error, 'Erro ao atualizar produto');
+      handleApiError(error, 'Erro ao atualizar produto');
+      return null;
     }
   },
   
   /**
    * Delete a product
    */
-  async deleteProduct(id: number) {
+  async deleteProduct(id: number): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('products')

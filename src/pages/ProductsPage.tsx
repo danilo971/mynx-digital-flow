@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ProductFormModal } from '@/components/products/ProductFormModal';
-import { ProductsList } from '@/components/products/ProductsList'; // This component should be created separately
+import { ProductsList } from '@/components/products/ProductsList';
 import { useProducts } from '@/hooks/useProducts';
 import { useState } from 'react';
 
@@ -26,12 +26,13 @@ export default function ProductsPage() {
   
   const [search, setSearch] = useState('');
   
-  const filteredProducts = products.filter(product => 
+  // Safely filter products with null check
+  const filteredProducts = products ? products.filter(product => 
     product.name.toLowerCase().includes(search.toLowerCase()) ||
     product.code.toLowerCase().includes(search.toLowerCase()) ||
     (product.barcode && product.barcode.toLowerCase().includes(search.toLowerCase())) ||
     product.category.toLowerCase().includes(search.toLowerCase())
-  );
+  ) : [];
 
   return (
     <div className="space-y-6">
