@@ -11,6 +11,14 @@ export interface UserWithAvatar {
   avatar?: string | null;
   avatar_url?: string | null;
   role?: string;
+  active?: boolean | null;
+  permissions?: {
+    pos?: boolean;
+    sales?: boolean;
+    products?: boolean;
+    reports?: boolean;
+    users?: boolean;
+  };
 }
 
 export function useAuth() {

@@ -69,7 +69,7 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
+                  <AvatarImage src={user?.avatar_url} alt={user?.name} />
                   <AvatarFallback>
                     {user?.name?.substring(0, 2).toUpperCase() || 'UN'}
                   </AvatarFallback>

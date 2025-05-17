@@ -18,6 +18,19 @@ export const supabase = createClient<Database>(
   }
 );
 
+// Sales units for product categories
+export const SALES_UNITS = [
+  "ampola", "arranjo", "balde", "bandeja", "barra", "bisnaga", "bloco", "bobina", 
+  "bombona", "cápsula", "cartela", "caixa", "caixa com 2 unidades", "caixa com 3 unidades", 
+  "caixa com 5 unidades", "caixa com 10 unidades", "caixa com 15 unidades", "caixa com 20 unidades", 
+  "caixa com 25 unidades", "caixa com 50 unidades", "caixa com 100 unidades", "cento", 
+  "centímetro", "centímetro quadrado", "conjunto", "display", "dúzia", "embalagem", "fardo", 
+  "folha", "frasco", "galão", "garrafa", "gramas", "jogo", "quilograma", "kit", "lata", 
+  "litro", "metro", "metro quadrado", "metro cúbico", "milheiro", "mililitro", "megawatt hora", 
+  "pacote", "palete", "par", "pares", "peça", "pote", "quilate", "resma", "rolo", "saco", 
+  "sacola", "tambor", "tanque", "tonelada", "tubo", "unidade", "vasilhame", "vidro"
+];
+
 // Utility function to handle API errors
 export const handleApiError = (error: any, message: string) => {
   console.error(`${message}:`, error);

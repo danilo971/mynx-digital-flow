@@ -15,7 +15,7 @@ export interface Database {
           id: number
           code: string
           name: string
-          barcode: string
+          barcode: string | null
           price: number
           stock: number
           category: string
@@ -27,7 +27,7 @@ export interface Database {
           id?: number
           code: string
           name: string
-          barcode?: string
+          barcode?: string | null
           price: number
           stock: number
           category: string
@@ -39,7 +39,7 @@ export interface Database {
           id?: number
           code?: string
           name?: string
-          barcode?: string
+          barcode?: string | null
           price?: number
           stock?: number
           category?: string
@@ -58,6 +58,13 @@ export interface Database {
           active: boolean | null
           created_at: string | null
           updated_at: string | null
+          permissions?: {
+            pos?: boolean
+            sales?: boolean
+            products?: boolean
+            reports?: boolean
+            users?: boolean
+          } | null
         }
         Insert: {
           id: string
@@ -68,6 +75,13 @@ export interface Database {
           active?: boolean | null
           created_at?: string | null
           updated_at?: string | null
+          permissions?: {
+            pos?: boolean
+            sales?: boolean
+            products?: boolean
+            reports?: boolean
+            users?: boolean
+          } | null
         }
         Update: {
           id?: string
@@ -78,6 +92,13 @@ export interface Database {
           active?: boolean | null
           created_at?: string | null
           updated_at?: string | null
+          permissions?: {
+            pos?: boolean
+            sales?: boolean
+            products?: boolean
+            reports?: boolean
+            users?: boolean
+          } | null
         }
       }
     }
