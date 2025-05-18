@@ -48,6 +48,84 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_items: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          product_id: number
+          quantity: number
+          sale_id: string
+          subtotal: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          product_id: number
+          quantity: number
+          sale_id: string
+          subtotal: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          product_id?: number
+          quantity?: number
+          sale_id?: string
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          created_at: string
+          customer: string | null
+          date: string
+          id: string
+          item_count: number
+          observations: string | null
+          status: string
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          customer?: string | null
+          date?: string
+          id?: string
+          item_count?: number
+          observations?: string | null
+          status?: string
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          customer?: string | null
+          date?: string
+          id?: string
+          item_count?: number
+          observations?: string | null
+          status?: string
+          total?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

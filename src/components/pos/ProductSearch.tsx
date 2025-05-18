@@ -7,9 +7,10 @@ import { productService, type ProductSearchResult } from '@/services/productServ
 
 interface ProductSearchProps {
   onProductSelect: (product: ProductSearchResult) => void;
+  selectedProduct: ProductSearchResult | null;
 }
 
-export function ProductSearch({ onProductSelect }: ProductSearchProps) {
+export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -26,8 +27,20 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     });
   };
 
+  // Limpar a busca quando um produto é selecionado
+  useEffect(() => {
+    if (selectedProduct) {
+      setSearchTerm(selectedProduct.name);
+    } else {
+      setSearchTerm('');
+    }
+  }, [selectedProduct]);
+
   // Debounce search
   useEffect(() => {
+    // Não buscar se tiver um produto selecionado
+    if (selectedProduct) return;
+    
     const searchProducts = async () => {
       const term = searchTerm || '';
       if (term.trim().length > 0) {
@@ -38,7 +51,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           const results = await productService.searchProducts(term);
           console.log('Resultados recebidos:', results);
           setSearchResults(results);
-          setIsSearching(true);
+          setIsSearching(results.length > 0);
         } catch (error) {
           console.error('Erro na busca de produtos:', error);
         } finally {
@@ -56,7 +69,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     }, 300);  // 300ms de debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [searchTerm, selectedProduct]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -77,18 +90,25 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         id="productSearch"
         placeholder="Nome, código ou código de barras"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          // Se tiver produto selecionado e o usuário digitar, limpe a seleção
+          if (selectedProduct) {
+            onProductSelect(null);
+          }
+        }}
         ref={inputRef}
         autoComplete="off"
         onClick={() => {
-          if (searchResults.length > 0) {
+          if (searchResults.length > 0 && !selectedProduct) {
             setIsSearching(true);
           }
         }}
+        disabled={!!selectedProduct}
       />
       
       {/* Search Results */}
-      {isSearching && (
+      {isSearching && !selectedProduct && (
         <div className="absolute z-20 mt-1 w-full rounded-md border bg-card shadow-lg">
           <div className="max-h-60 overflow-y-auto p-2">
             {searchResults.length > 0 ? (
@@ -98,7 +118,6 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                   className="cursor-pointer rounded-md p-2 hover:bg-accent"
                   onClick={() => {
                     onProductSelect(product);
-                    setSearchTerm('');
                     setIsSearching(false);
                   }}
                 >

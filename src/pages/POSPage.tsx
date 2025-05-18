@@ -12,15 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import type { ProductSearchResult } from '@/services/productService';
-
-type SaleProduct = {
-  id: number;
-  name: string;
-  code: string;
-  quantity: number;
-  price: number;
-  subtotal: number;
-};
+import { saleService, type SaleProduct } from '@/services/saleService';
+import { useNavigate } from 'react-router-dom';
 
 type SaleForm = {
   quantity: number;
@@ -29,8 +22,10 @@ type SaleForm = {
 
 const POSPage = () => {
   const [cartItems, setCartItems] = useState<SaleProduct[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const { 
     register, 
@@ -53,9 +48,29 @@ const POSPage = () => {
     return cartItems.reduce((total, item) => total + item.subtotal, 0);
   };
   
-  // Add product to cart
-  const addProductToCart = (product: ProductSearchResult) => {
-    console.log("Adicionando produto ao carrinho:", product);
+  // Handle product selection from search
+  const handleProductSelect = (product: ProductSearchResult | null) => {
+    setSelectedProduct(product);
+    if (product) {
+      // Focus on quantity input after selecting a product
+      setTimeout(() => {
+        if (quantityInputRef.current) {
+          quantityInputRef.current.focus();
+        }
+      }, 0);
+    }
+  };
+  
+  // Add product to cart via the Add button
+  const handleAddToCart = () => {
+    if (!selectedProduct) {
+      toast({
+        variant: "destructive",
+        title: "Nenhum produto selecionado",
+        description: "Por favor, selecione um produto antes de adicionar.",
+      });
+      return;
+    }
     
     if (quantity <= 0) {
       toast({
@@ -66,46 +81,31 @@ const POSPage = () => {
       return;
     }
     
-    const existingItem = cartItems.find(item => item.id === product.id);
+    // Add product to cart
+    const newItem: SaleProduct = {
+      id: selectedProduct.id,
+      name: selectedProduct.name,
+      code: selectedProduct.code,
+      quantity: quantity,
+      price: selectedProduct.price,
+      subtotal: quantity * selectedProduct.price
+    };
     
-    if (existingItem) {
-      // Update quantity if product already in cart
-      setCartItems(cartItems.map(item => 
-        item.id === product.id 
-          ? { 
-              ...item, 
-              quantity: item.quantity + quantity, 
-              subtotal: (item.quantity + quantity) * item.price 
-            } 
-          : item
-      ));
-    } else {
-      // Add new product to cart
-      setCartItems([
-        ...cartItems, 
-        { 
-          id: product.id,
-          name: product.name,
-          code: product.code,
-          quantity: quantity,
-          price: product.price,
-          subtotal: quantity * product.price
-        }
-      ]);
-    }
+    setCartItems([...cartItems, newItem]);
     
-    // Reset form and focus on product search
+    // Reset form and selection
     setValue('quantity', 1);
+    setSelectedProduct(null);
     
     toast({
       title: "Produto adicionado",
-      description: `${product.name} adicionado ao carrinho.`,
+      description: `${selectedProduct.name} adicionado ao carrinho.`,
     });
   };
   
   // Remove product from cart
-  const removeProduct = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
+  const removeProduct = (id: number, index: number) => {
+    setCartItems(cartItems.filter((_, i) => i !== index));
     
     toast({
       title: "Produto removido",
@@ -113,19 +113,8 @@ const POSPage = () => {
     });
   };
   
-  // Update product quantity
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) return;
-    
-    setCartItems(cartItems.map(item => 
-      item.id === id 
-        ? { ...item, quantity: newQuantity, subtotal: newQuantity * item.price } 
-        : item
-    ));
-  };
-  
   // Submit sale
-  const handleFinalizeSale = (formData: SaleForm) => {
+  const handleFinalizeSale = async (formData: SaleForm) => {
     if (cartItems.length === 0) {
       toast({
         variant: "destructive",
@@ -135,22 +124,41 @@ const POSPage = () => {
       return;
     }
     
-    // Here you would typically send the sale data to your backend
-    console.log('Sale finalized:', {
-      items: cartItems,
-      total: calculateTotal(),
-      observations: formData.observations,
-      date: new Date()
-    });
-    
-    toast({
-      title: "Venda finalizada com sucesso!",
-      description: `Total: R$ ${calculateTotal().toFixed(2)}`,
-    });
-    
-    // Reset cart and form
-    setCartItems([]);
-    reset();
+    try {
+      // Prepare sale data
+      const saleData = {
+        items: cartItems,
+        total: calculateTotal(),
+        itemCount: cartItems.reduce((total, item) => total + item.quantity, 0),
+        observations: formData.observations,
+      };
+      
+      // Send to API
+      const result = await saleService.createSale(saleData);
+      
+      if (result) {
+        toast({
+          title: "Venda finalizada com sucesso!",
+          description: `Total: ${formatCurrency(calculateTotal())}`,
+        });
+        
+        // Reset cart and form
+        setCartItems([]);
+        reset();
+        
+        // Redirect to sales page
+        navigate('/sales');
+      } else {
+        throw new Error("Não foi possível finalizar a venda");
+      }
+    } catch (error) {
+      console.error('Erro ao finalizar venda:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao finalizar venda",
+        description: "Ocorreu um erro ao processar a venda.",
+      });
+    }
   };
   
   // Format as currency
@@ -193,7 +201,10 @@ const POSPage = () => {
                 <div className="grid gap-4 sm:grid-cols-4">
                   {/* Product Search Component */}
                   <div className="sm:col-span-2">
-                    <ProductSearch onProductSelect={addProductToCart} />
+                    <ProductSearch 
+                      onProductSelect={handleProductSelect} 
+                      selectedProduct={selectedProduct}
+                    />
                   </div>
                   
                   {/* Quantity */}
@@ -216,14 +227,10 @@ const POSPage = () => {
                   {/* Add Button */}
                   <div className="flex items-end">
                     <Button
-                      onClick={() => {
-                        toast({
-                          title: "Selecione um produto",
-                          description: "Por favor, busque e selecione um produto da lista.",
-                        });
-                      }}
+                      onClick={handleAddToCart}
                       className="w-full"
                       type="button"
+                      disabled={!selectedProduct}
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Adicionar
@@ -246,30 +253,12 @@ const POSPage = () => {
                     </TableHeader>
                     <TableBody>
                       {cartItems.length > 0 ? (
-                        cartItems.map((item) => (
-                          <TableRow key={item.id}>
+                        cartItems.map((item, index) => (
+                          <TableRow key={`${item.id}-${index}`}>
                             <TableCell className="font-medium">{item.code}</TableCell>
                             <TableCell>{item.name}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                >
-                                  <span>-</span>
-                                </Button>
-                                <span className="w-10 text-center">{item.quantity}</span>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                >
-                                  <span>+</span>
-                                </Button>
-                              </div>
+                              {item.quantity}
                             </TableCell>
                             <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                             <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
@@ -278,7 +267,7 @@ const POSPage = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-destructive"
-                                onClick={() => removeProduct(item.id)}
+                                onClick={() => removeProduct(item.id, index)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -374,6 +363,7 @@ const POSPage = () => {
                 onClick={() => {
                   setCartItems([]);
                   reset();
+                  setSelectedProduct(null);
                   toast({
                     title: "Venda cancelada",
                     description: "Todos os produtos foram removidos.",
