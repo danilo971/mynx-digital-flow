@@ -127,10 +127,15 @@ export const productService = {
    */
   async searchProducts(searchTerm: string): Promise<ProductSearchResult[]> {
     try {
+      // Validação do termo de busca
       if (!searchTerm || searchTerm.trim() === '') {
+        console.log('Termo de busca vazio, retornando array vazio');
         return [];
       }
 
+      console.log('Buscando produtos com termo:', searchTerm.trim());
+      
+      // Chamada à função RPC search_products
       const { data, error } = await supabase
         .rpc('search_products', { search_term: searchTerm.trim() });
       
@@ -139,9 +144,15 @@ export const productService = {
         return [];
       }
       
+      // Log dos resultados para depuração
+      console.log('Resultados da busca:', data?.length || 0, 'produtos encontrados');
+      if (data && data.length > 0) {
+        console.log('Primeiro resultado:', data[0]);
+      }
+      
       return data || [];
     } catch (error) {
-      console.error('Erro ao buscar produtos:', error);
+      console.error('Exceção ao buscar produtos:', error);
       return [];
     }
   },

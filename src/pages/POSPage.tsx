@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { X, Plus, Trash2, ShoppingCart, Printer, Save, Check } from 'lucide-react';
@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { productService, type ProductSearchResult } from '@/services/productService';
-import { Loader2 } from 'lucide-react';
+import { ProductSearch } from '@/components/pos/ProductSearch';
+import type { ProductSearchResult } from '@/services/productService';
 
 type SaleProduct = {
   id: number;
@@ -23,18 +23,12 @@ type SaleProduct = {
 };
 
 type SaleForm = {
-  productSearch: string;
   quantity: number;
   observations: string;
 };
 
 const POSPage = () => {
   const [cartItems, setCartItems] = useState<SaleProduct[]>([]);
-  const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const productInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -47,55 +41,12 @@ const POSPage = () => {
     formState: { errors } 
   } = useForm<SaleForm>({
     defaultValues: {
-      productSearch: '',
       quantity: 1,
       observations: '',
     }
   });
   
-  const productSearch = watch('productSearch');
   const quantity = watch('quantity');
-  
-  // Debounce search
-  useEffect(() => {
-    const searchProducts = async () => {
-      const searchTerm = productSearch || '';
-      if (searchTerm.trim().length > 0) {
-        setIsLoading(true);
-        try {
-          const results = await productService.searchProducts(searchTerm);
-          setSearchResults(results);
-          setIsSearching(results.length > 0);
-        } catch (error) {
-          console.error('Erro na busca de produtos:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        setSearchResults([]);
-        setIsSearching(false);
-      }
-    };
-
-    // Criar debounce para não disparar a busca a cada tecla
-    const timeoutId = setTimeout(() => {
-      searchProducts();
-    }, 300);  // 300ms de debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [productSearch]);
-  
-  // Close search results when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearching(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
   
   // Calculate sale total
   const calculateTotal = () => {
@@ -104,6 +55,8 @@ const POSPage = () => {
   
   // Add product to cart
   const addProductToCart = (product: ProductSearchResult) => {
+    console.log("Adicionando produto ao carrinho:", product);
+    
     if (quantity <= 0) {
       toast({
         variant: "destructive",
@@ -142,10 +95,7 @@ const POSPage = () => {
     }
     
     // Reset form and focus on product search
-    setValue('productSearch', '');
     setValue('quantity', 1);
-    setIsSearching(false);
-    if (productInputRef.current) productInputRef.current.focus();
     
     toast({
       title: "Produto adicionado",
@@ -241,56 +191,9 @@ const POSPage = () => {
             <CardContent>
               <form className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-4">
-                  {/* Product Search */}
-                  <div className="relative sm:col-span-2" ref={searchRef}>
-                    <Label htmlFor="productSearch">Produto</Label>
-                    <Input
-                      id="productSearch"
-                      placeholder="Nome, código ou código de barras"
-                      {...register("productSearch")}
-                      ref={productInputRef}
-                      autoComplete="off"
-                    />
-                    
-                    {/* Search Results */}
-                    {isSearching && searchResults.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-card shadow-lg">
-                        <div className="max-h-60 overflow-y-auto p-2">
-                          {searchResults.map(product => (
-                            <div
-                              key={product.id}
-                              className="cursor-pointer rounded-md p-2 hover:bg-accent"
-                              onClick={() => addProductToCart(product)}
-                            >
-                              <div className="font-medium">{product.name}</div>
-                              <div className="flex justify-between text-sm">
-                                <span>{product.code}</span>
-                                <span className="font-semibold text-primary">
-                                  {formatCurrency(product.price)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Loading indicator */}
-                    {isLoading && (
-                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-card p-2 shadow-lg">
-                        <div className="flex items-center justify-center py-2">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          <p className="text-sm text-muted-foreground">Buscando produtos...</p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* No results message */}
-                    {isSearching && searchResults.length === 0 && !isLoading && (
-                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-card p-2 shadow-lg">
-                        <p className="text-sm text-muted-foreground">Nenhum produto encontrado</p>
-                      </div>
-                    )}
+                  {/* Product Search Component */}
+                  <div className="sm:col-span-2">
+                    <ProductSearch onProductSelect={addProductToCart} />
                   </div>
                   
                   {/* Quantity */}
@@ -313,18 +216,12 @@ const POSPage = () => {
                   {/* Add Button */}
                   <div className="flex items-end">
                     <Button
-                      onClick={handleSubmit(() => {
-                        const product = searchResults[0];
-                        if (product) {
-                          addProductToCart(product);
-                        } else {
-                          toast({
-                            variant: "destructive",
-                            title: "Produto não encontrado",
-                            description: "Selecione um produto válido da lista.",
-                          });
-                        }
-                      })}
+                      onClick={() => {
+                        toast({
+                          title: "Selecione um produto",
+                          description: "Por favor, busque e selecione um produto da lista.",
+                        });
+                      }}
                       className="w-full"
                       type="button"
                     >
