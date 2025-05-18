@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -9,15 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-// Mock product data
-const mockProducts = [
-  { id: 1, name: 'Produto A', code: 'A001', barcode: '7890123456789', price: 29.90, stock: 120 },
-  { id: 2, name: 'Produto B', code: 'B002', barcode: '7890123456790', price: 49.90, stock: 75 },
-  { id: 3, name: 'Produto C', code: 'C003', barcode: '7890123456791', price: 99.90, stock: 50 },
-  { id: 4, name: 'Produto D', code: 'D004', barcode: '7890123456792', price: 19.90, stock: 200 },
-  { id: 5, name: 'Produto E', code: 'E005', barcode: '7890123456793', price: 149.90, stock: 30 },
-];
+import { productService, type ProductSearchResult } from '@/services/productService';
+import { Loader2 } from 'lucide-react';
 
 type SaleProduct = {
   id: number;
@@ -36,8 +30,9 @@ type SaleForm = {
 
 const POSPage = () => {
   const [cartItems, setCartItems] = useState<SaleProduct[]>([]);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
@@ -61,22 +56,33 @@ const POSPage = () => {
   const productSearch = watch('productSearch');
   const quantity = watch('quantity');
   
-  // Search for products - Fixed to safely handle undefined productSearch
+  // Debounce search
   useEffect(() => {
-    // Add null check before calling trim()
-    const searchTerm = productSearch || '';
-    if (searchTerm.trim().length > 0) {
-      const results = mockProducts.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        product.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        product.barcode.includes(searchTerm)
-      );
-      setSearchResults(results);
-      setIsSearching(true);
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
+    const searchProducts = async () => {
+      const searchTerm = productSearch || '';
+      if (searchTerm.trim().length > 0) {
+        setIsLoading(true);
+        try {
+          const results = await productService.searchProducts(searchTerm);
+          setSearchResults(results);
+          setIsSearching(results.length > 0);
+        } catch (error) {
+          console.error('Erro na busca de produtos:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+    };
+
+    // Criar debounce para não disparar a busca a cada tecla
+    const timeoutId = setTimeout(() => {
+      searchProducts();
+    }, 300);  // 300ms de debounce
+
+    return () => clearTimeout(timeoutId);
   }, [productSearch]);
   
   // Close search results when clicking outside
@@ -97,7 +103,7 @@ const POSPage = () => {
   };
   
   // Add product to cart
-  const addProductToCart = (product: any) => {
+  const addProductToCart = (product: ProductSearchResult) => {
     if (quantity <= 0) {
       toast({
         variant: "destructive",
@@ -269,7 +275,18 @@ const POSPage = () => {
                       </div>
                     )}
                     
-                    {isSearching && searchResults.length === 0 && (
+                    {/* Loading indicator */}
+                    {isLoading && (
+                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-card p-2 shadow-lg">
+                        <div className="flex items-center justify-center py-2">
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          <p className="text-sm text-muted-foreground">Buscando produtos...</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* No results message */}
+                    {isSearching && searchResults.length === 0 && !isLoading && (
                       <div className="absolute z-10 mt-1 w-full rounded-md border bg-card p-2 shadow-lg">
                         <p className="text-sm text-muted-foreground">Nenhum produto encontrado</p>
                       </div>

@@ -3,6 +3,14 @@ import { supabase, handleApiError, SALES_UNITS } from '@/lib/supabase';
 import { Database } from '@/lib/database.types';
 
 export type Product = Database['public']['Tables']['products']['Row'];
+export type ProductSearchResult = {
+  id: number;
+  code: string;
+  name: string;
+  barcode: string | null;
+  price: number;
+  stock: number;
+};
 
 export const productService = {
   /**
@@ -110,6 +118,31 @@ export const productService = {
     } catch (error) {
       handleApiError(error, 'Erro ao excluir produto');
       return false;
+    }
+  },
+  
+  /**
+   * Busca produtos por termo (nome, código ou código de barras)
+   * Utiliza a função RPC search_products criada no Supabase
+   */
+  async searchProducts(searchTerm: string): Promise<ProductSearchResult[]> {
+    try {
+      if (!searchTerm || searchTerm.trim() === '') {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .rpc('search_products', { search_term: searchTerm.trim() });
+      
+      if (error) {
+        console.error('Erro ao buscar produtos:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Erro ao buscar produtos:', error);
+      return [];
     }
   },
   
