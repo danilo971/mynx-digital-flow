@@ -44,7 +44,12 @@ const POSPage = () => {
     }
   });
   
-  const quantity = Number(watch('quantity'));
+  // Get quantity with proper validation and fallback
+  const rawQuantity = watch('quantity');
+  const quantity = (rawQuantity === '' || rawQuantity === undefined || isNaN(Number(rawQuantity))) 
+    ? 1 
+    : Number(rawQuantity);
+  
   const paymentMethod = watch('paymentMethod');
   
   // Calculate sale total
@@ -76,7 +81,13 @@ const POSPage = () => {
       return;
     }
     
-    if (quantity <= 0) {
+    // Enhanced quantity validation with logs
+    const safeQuantity = Math.max(1, Number(quantity) || 1);
+    console.log('Valor bruto da quantidade:', rawQuantity);
+    console.log('Tipo do valor bruto:', typeof rawQuantity);
+    console.log('Quantidade convertida:', safeQuantity);
+    
+    if (safeQuantity <= 0 || isNaN(safeQuantity)) {
       toast({
         variant: "destructive",
         title: "Quantidade inválida",
@@ -85,24 +96,28 @@ const POSPage = () => {
       return;
     }
     
-    // Garantir que preço e quantidade sejam números
-    const price = Number(selectedProduct.price);
-    const subtotal = quantity * price;
+    // Guaranteed safe price and quantity
+    const price = Number(selectedProduct.price) || 0;
+    const subtotal = safeQuantity * price;
     
-    // Add product to cart
+    console.log('Preço:', price);
+    console.log('Quantidade segura:', safeQuantity);
+    console.log('Subtotal calculado:', subtotal);
+    
+    // Add product to cart with safe values
     const newItem: SaleProduct = {
       id: selectedProduct.id,
       name: selectedProduct.name,
       code: selectedProduct.code,
-      quantity: quantity,
+      quantity: safeQuantity,
       price: price,
       subtotal: subtotal
     };
     
     setCartItems([...cartItems, newItem]);
     
-    // Reset form and selection
-    setValue('quantity', 1);
+    // Reset form and selection with explicit validation
+    setValue('quantity', 1, { shouldValidate: true });
     setSelectedProduct(null);
     
     toast({
@@ -233,7 +248,8 @@ const POSPage = () => {
                       type="number"
                       min="1"
                       {...register("quantity", { 
-                        min: { value: 1, message: "Mínimo 1" } 
+                        min: { value: 1, message: "Mínimo 1" },
+                        valueAsNumber: true
                       })}
                       ref={quantityInputRef}
                     />

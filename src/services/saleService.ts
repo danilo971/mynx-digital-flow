@@ -21,7 +21,7 @@ export type NewSale = {
   itemCount: number;
   observations?: string;
   customer?: string;
-  paymentMethod: string; // Campo adicionado para forma de pagamento
+  paymentMethod: string;
 };
 
 export const saleService = {
@@ -32,17 +32,21 @@ export const saleService = {
     try {
       console.log('Iniciando criação de venda:', saleData);
       
+      // Validate numeric fields to prevent NaN issues
+      const total = Number(saleData.total) || 0;
+      const itemCount = Number(saleData.itemCount) || 0;
+      
       // Criar registro principal da venda
       const saleId = uuidv4();
       const { data: saleResult, error: saleError } = await supabase
         .from('sales')
         .insert([{
           id: saleId,
-          total: saleData.total,
-          item_count: saleData.itemCount,
+          total: total,
+          item_count: itemCount,
           observations: saleData.observations || null,
           customer: saleData.customer || null,
-          payment_method: saleData.paymentMethod // Campo adicionado para forma de pagamento
+          payment_method: saleData.paymentMethod
         }])
         .select()
         .single();
@@ -54,13 +58,13 @@ export const saleService = {
       
       console.log('Venda criada com sucesso:', saleResult);
       
-      // Criar itens da venda
+      // Criar itens da venda com validação de números
       const saleItems = saleData.items.map(item => ({
         sale_id: saleId,
         product_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        subtotal: item.subtotal
+        quantity: Number(item.quantity) || 0,
+        price: Number(item.price) || 0,
+        subtotal: Number(item.subtotal) || 0
       }));
       
       const { error: itemsError } = await supabase

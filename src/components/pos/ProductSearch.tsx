@@ -27,7 +27,7 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
     });
   };
 
-  // Limpar a busca quando um produto é selecionado
+  // Update search term when a product is selected
   useEffect(() => {
     if (selectedProduct) {
       setSearchTerm(selectedProduct.name);
@@ -38,9 +38,6 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
 
   // Debounce search
   useEffect(() => {
-    // Não buscar se tiver um produto selecionado
-    if (selectedProduct) return;
-    
     const searchProducts = async () => {
       const term = searchTerm || '';
       if (term.trim().length > 0) {
@@ -69,7 +66,7 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
     }, 300);  // 300ms de debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, selectedProduct]);
+  }, [searchTerm]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -92,7 +89,7 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
         value={searchTerm}
         onChange={(e) => {
           setSearchTerm(e.target.value);
-          // Se tiver produto selecionado e o usuário digitar, limpe a seleção
+          // If currently selected product and user types, clear the selection
           if (selectedProduct) {
             onProductSelect(null);
           }
@@ -100,15 +97,14 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
         ref={inputRef}
         autoComplete="off"
         onClick={() => {
-          if (searchResults.length > 0 && !selectedProduct) {
+          if (searchResults.length > 0) {
             setIsSearching(true);
           }
         }}
-        disabled={!!selectedProduct}
       />
       
       {/* Search Results */}
-      {isSearching && !selectedProduct && (
+      {isSearching && (
         <div className="absolute z-20 mt-1 w-full rounded-md border bg-card shadow-lg">
           <div className="max-h-60 overflow-y-auto p-2">
             {searchResults.length > 0 ? (
