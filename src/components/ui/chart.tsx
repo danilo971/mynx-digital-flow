@@ -191,7 +191,7 @@ const ChartTooltipContent = React.forwardRef<
 
             return (
               <div
-                key={item.dataKey}
+                key={item.dataKey?.toString() || index}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
@@ -435,28 +435,31 @@ const AreaChart = React.forwardRef<
                     {value as React.ReactNode}
                   </span>
                 )}
-                formatter={(value, _, __, ___, item) => (
+                formatter={(value, _, __, ___, item) => {
+                  // Using any here for Recharts compatibility
+                  const itemData = item as any;
+                  return (
                   <div className="flex w-full flex-wrap items-center gap-2">
                     <div
                       className="h-2 w-2 shrink-0 rounded-[2px]"
                       style={{
                         backgroundColor: colors[
                           categories.findIndex(
-                            category => String(category) === String(item.dataKey)
+                            category => String(category) === String(itemData.dataKey)
                           ) % colors.length
                         ]
                       }}
                     />
                     <div className="flex flex-1 items-center justify-between gap-2">
                       <span className="font-medium text-muted-foreground">
-                        {item.dataKey}
+                        {itemData.dataKey}
                       </span>
                       <span className="font-medium tabular-nums">
                         {valueFormatter(value as number)}
                       </span>
                     </div>
                   </div>
-                )}
+                )}}
               />
             }
           />
@@ -539,28 +542,31 @@ const BarChart = React.forwardRef<
                     {value as React.ReactNode}
                   </span>
                 )}
-                formatter={(value, _, __, ___, item) => (
+                formatter={(value, _, __, ___, item) => {
+                  // Using any here for Recharts compatibility
+                  const itemData = item as any;
+                  return (
                   <div className="flex w-full flex-wrap items-center gap-2">
                     <div
                       className="h-2 w-2 shrink-0 rounded-[2px]"
                       style={{
                         backgroundColor: colors[
                           categories.findIndex(
-                            category => String(category) === String(item.dataKey)
+                            category => String(category) === String(itemData.dataKey)
                           ) % colors.length
                         ]
                       }}
                     />
                     <div className="flex flex-1 items-center justify-between gap-2">
                       <span className="font-medium text-muted-foreground">
-                        {item.dataKey}
+                        {itemData.dataKey}
                       </span>
                       <span className="font-medium tabular-nums">
                         {valueFormatter(value as number)}
                       </span>
                     </div>
                   </div>
-                )}
+                )}}
               />
             }
           />
