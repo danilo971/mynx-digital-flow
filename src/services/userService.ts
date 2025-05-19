@@ -1,62 +1,18 @@
-import { supabase, handleApiError } from '@/lib/supabase';
-import { useToast, toast } from "@/hooks/use-toast";
-import { Database } from '@/integrations/supabase/types';
 
-// We need to extend the UserProfile to include the missing properties
+import { supabase, handleApiError } from '@/lib/supabase';
+import { toast } from 'sonner';
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: string;
   avatar_url?: string | null;
-  active?: boolean;
-  permissions?: {
-    pos?: boolean;
-    sales?: boolean;
-    products?: boolean;
-    reports?: boolean;
-  };
+  role: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const userService = {
-  /**
-   * Get current user profile
-   */
-  async getCurrentUser(): Promise<UserProfile | null> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        return null;
-      }
-      
-      // Get user profile data
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        return null;
-      }
-      
-      return {
-        id: user.id,
-        name: data?.name || user.email?.split('@')[0] || 'User',
-        email: user.email || '',
-        role: data?.role || 'user',
-        avatar_url: data?.avatar_url,
-        active: data?.active !== false, // Default to active if not specified
-        permissions: data?.permissions || {}
-      };
-    } catch (error) {
-      console.error('Error getting current user:', error);
-      return null;
-    }
-  },
-
   // Criar um novo usuário
   async createUser(name: string, email: string, password: string, role = 'user'): Promise<UserProfile | null> {
     try {

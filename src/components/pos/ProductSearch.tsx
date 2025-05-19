@@ -27,15 +27,20 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
     });
   };
 
-  // Update search term when a product is selected, but don't disable the field
+  // Limpar a busca quando um produto é selecionado
   useEffect(() => {
     if (selectedProduct) {
       setSearchTerm(selectedProduct.name);
+    } else {
+      setSearchTerm('');
     }
   }, [selectedProduct]);
 
   // Debounce search
   useEffect(() => {
+    // Não buscar se tiver um produto selecionado
+    if (selectedProduct) return;
+    
     const searchProducts = async () => {
       const term = searchTerm || '';
       if (term.trim().length > 0) {
@@ -71,7 +76,7 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
     }, 300);  // 300ms de debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [searchTerm, selectedProduct]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -95,21 +100,22 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
         onChange={(e) => {
           setSearchTerm(e.target.value);
           // Se tiver produto selecionado e o usuário digitar, limpe a seleção
-          if (selectedProduct && e.target.value !== selectedProduct.name) {
+          if (selectedProduct) {
             onProductSelect(null);
           }
         }}
         ref={inputRef}
         autoComplete="off"
         onClick={() => {
-          if (searchResults.length > 0) {
+          if (searchResults.length > 0 && !selectedProduct) {
             setIsSearching(true);
           }
         }}
+        disabled={!!selectedProduct}
       />
       
       {/* Search Results */}
-      {isSearching && (
+      {isSearching && !selectedProduct && (
         <div className="absolute z-20 mt-1 w-full rounded-md border bg-card shadow-lg">
           <div className="max-h-60 overflow-y-auto p-2">
             {searchResults.length > 0 ? (

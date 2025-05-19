@@ -48,51 +48,13 @@ export const saleService = {
         throw new Error('A forma de pagamento deve ser selecionada');
       }
       
-      // Verificar se quantidades e preços são números válidos
-      const invalidItems = saleData.items.filter(item => 
-        isNaN(Number(item.quantity)) || 
-        Number(item.quantity) <= 0 || 
-        isNaN(Number(item.price)) ||
-        Number(item.price) < 0
-      );
-      
-      if (invalidItems.length > 0) {
-        console.error('Itens com valores inválidos:', invalidItems);
-        throw new Error('Um ou mais itens contêm valores inválidos');
-      }
-      
-      // Verificar cálculos para garantir integridade
-      let calculatedTotal = 0;
-      saleData.items.forEach(item => {
-        const qty = Number(item.quantity);
-        const price = Number(item.price);
-        const expectedSubtotal = qty * price;
-        
-        console.log(`Item: ${item.name}, Qtd: ${qty}, Preço: ${price}, Subtotal Esperado: ${expectedSubtotal}, Subtotal Recebido: ${item.subtotal}`);
-        
-        if (Math.abs(expectedSubtotal - Number(item.subtotal)) > 0.01) {
-          console.warn(`Subtotal inconsistente para ${item.name}: esperado ${expectedSubtotal}, recebido ${item.subtotal}`);
-          // Corrigir o subtotal em vez de lançar erro
-          item.subtotal = expectedSubtotal;
-        }
-        
-        calculatedTotal += expectedSubtotal;
-      });
-      
-      // Verificar se o total calculado bate com o total informado
-      if (Math.abs(calculatedTotal - total) > 0.01) {
-        console.warn(`Total inconsistente: calculado ${calculatedTotal}, informado ${total}`);
-        // Usar o valor calculado em vez do informado
-        saleData.total = calculatedTotal;
-      }
-      
       // Criar registro principal da venda
       const saleId = uuidv4();
       const { data: saleResult, error: saleError } = await supabase
         .from('sales')
         .insert([{
           id: saleId,
-          total: saleData.total,
+          total: total,
           item_count: saleData.itemCount,
           observations: saleData.observations || null,
           customer: saleData.customer || null,
@@ -114,6 +76,10 @@ export const saleService = {
         const quantity = Number(item.quantity);
         const price = Number(item.price);
         const subtotal = quantity * price;
+        
+        if (isNaN(quantity) || isNaN(price) || isNaN(subtotal)) {
+          throw new Error(`Valores inválidos para o produto ${item.name}`);
+        }
         
         return {
           sale_id: saleId,
