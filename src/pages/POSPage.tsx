@@ -44,7 +44,7 @@ const POSPage = () => {
     }
   });
   
-  const quantity = Number(watch('quantity'));
+  const quantity = watch('quantity');
   const paymentMethod = watch('paymentMethod');
   
   // Calculate sale total
@@ -64,6 +64,7 @@ const POSPage = () => {
       setTimeout(() => {
         if (quantityInputRef.current) {
           quantityInputRef.current.focus();
+          quantityInputRef.current.select();
         }
       }, 0);
     }
@@ -80,14 +81,26 @@ const POSPage = () => {
       return;
     }
     
-    // Corrigida a validação de quantidade com logs para debug
-    const qtdNumerica = Number(quantity);
-    console.log('Quantidade informada:', quantity);
-    console.log('Quantidade convertida (número):', qtdNumerica);
-    console.log('Tipo de dado após conversão:', typeof qtdNumerica);
+    // Obter o valor e converter para número de forma robusta
+    const quantityStr = String(quantity).trim();
+    const qtdNumerica = parseFloat(quantityStr);
+    
+    console.log('Valor bruto do campo:', quantity);
+    console.log('Valor como string:', quantityStr);
+    console.log('Valor numérico convertido com parseFloat:', qtdNumerica);
+    console.log('É um número válido?', !isNaN(qtdNumerica));
     console.log('É maior que zero?', qtdNumerica > 0);
     
-    if (isNaN(qtdNumerica) || qtdNumerica <= 0) {
+    // Verificação robusta
+    if (quantityStr === '' || isNaN(qtdNumerica) || qtdNumerica <= 0) {
+      console.error('Validação falhou:', { 
+        valorBruto: quantity,
+        valorString: quantityStr,
+        valorNumerico: qtdNumerica,
+        ehNaN: isNaN(qtdNumerica),
+        ehMaiorQueZero: qtdNumerica > 0
+      });
+      
       toast({
         variant: "destructive",
         title: "Quantidade inválida",
@@ -291,6 +304,7 @@ const POSPage = () => {
                       id="quantity"
                       type="number"
                       min="1"
+                      step="1"
                       {...register("quantity", { 
                         min: { value: 1, message: "Mínimo 1" } 
                       })}

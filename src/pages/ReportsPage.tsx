@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, PieChart, BarChart } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
@@ -11,6 +10,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon } from 'lucide-react';
+import { AreaChart, BarChart, PieChart } from '@/pages/DashboardPage';
+import * as RechartsPrimitive from "recharts";
+import { ChartContainer, ChartTooltipContent } from '@/pages/DashboardPage';
 
 type ReportData = {
   name: string;
@@ -56,6 +58,31 @@ const ReportsPage = () => {
         date.to ? format(date.to, 'dd/MM/yyyy') : 'Hoje'
       }`
     : 'Selecione um período';
+
+  // Define color configurations for charts
+  const chartColors = ["#2563eb", "#f59e0b", "#4ade80", "#8b5cf6", "#ec4899"];
+
+  // Create chart configs for each dataset
+  const salesConfig = {
+    ...salesData.reduce((acc, item, index) => ({
+      ...acc,
+      [item.name]: { color: chartColors[index % chartColors.length] }
+    }), {})
+  };
+
+  const productConfig = {
+    ...productSalesData.reduce((acc, item, index) => ({
+      ...acc,
+      [item.name]: { color: chartColors[index % chartColors.length] }
+    }), {})
+  };
+
+  const categoryConfig = {
+    ...categorySalesData.reduce((acc, item, index) => ({
+      ...acc,
+      [item.name]: { color: chartColors[index % chartColors.length] }
+    }), {})
+  };
 
   return (
     <div className="space-y-6">
@@ -140,14 +167,55 @@ const ReportsPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AreaChart
-              data={salesData}
-              categories={salesData.map((item) => item.name)}
-              index="name"
-              colors={['#2563eb', '#f59e0b', '#4ade80']}
-              valueFormatter={(value: number) => `R$ ${value.toFixed(2)}`}
+            <ChartContainer
+              config={salesConfig}
               className="h-[350px]"
-            />
+            >
+              <RechartsPrimitive.AreaChart data={salesData}>
+                <defs>
+                  {salesData.map((item, i) => (
+                    <linearGradient
+                      key={`gradient-${item.name}`}
+                      id={`gradient-${item.name}`}
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={chartColors[i % chartColors.length]}
+                        stopOpacity={0.45}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={chartColors[i % chartColors.length]}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                <RechartsPrimitive.XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <RechartsPrimitive.YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                />
+                <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+                <RechartsPrimitive.Area
+                  type="monotone"
+                  dataKey="total"
+                  stackId="1"
+                  stroke="#2563eb"
+                  fill="url(#gradient-Venda 1)"
+                />
+              </RechartsPrimitive.AreaChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </motion.div>
@@ -166,14 +234,31 @@ const ReportsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PieChart
-                data={categorySalesData}
-                index="name"
-                category="total"
-                valueFormatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                colors={['#2563eb', '#f59e0b', '#4ade80', '#8b5cf6', '#ec4899']}
+              <ChartContainer
+                config={categoryConfig}
                 className="h-[350px]"
-              />
+              >
+                <RechartsPrimitive.PieChart>
+                  <RechartsPrimitive.Pie
+                    data={categorySalesData}
+                    dataKey="total"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="90%"
+                    innerRadius="60%"
+                    strokeWidth={0}
+                  >
+                    {categorySalesData.map((_, i) => (
+                      <RechartsPrimitive.Cell
+                        key={`cell-${i}`}
+                        fill={chartColors[i % chartColors.length]}
+                      />
+                    ))}
+                  </RechartsPrimitive.Pie>
+                  <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+                </RechartsPrimitive.PieChart>
+              </ChartContainer>
             </CardContent>
           </Card>
         </motion.div>
@@ -191,14 +276,22 @@ const ReportsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <BarChart
-                data={productSalesData}
-                categories={productSalesData.map((item) => item.name)}
-                index="name"
-                colors={['#2563eb', '#f59e0b', '#4ade80']}
-                valueFormatter={(value: number) => `R$ ${value.toFixed(2)}`}
+              <ChartContainer
+                config={productConfig}
                 className="h-[350px]"
-              />
+              >
+                <RechartsPrimitive.BarChart data={productSalesData}>
+                  <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                  <RechartsPrimitive.XAxis dataKey="name" tickLine={false} axisLine={false} />
+                  <RechartsPrimitive.YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: number) => `R$ ${value.toFixed(2)}`}
+                  />
+                  <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+                  <RechartsPrimitive.Bar dataKey="total" fill="#2563eb" />
+                </RechartsPrimitive.BarChart>
+              </ChartContainer>
             </CardContent>
           </Card>
         </motion.div>

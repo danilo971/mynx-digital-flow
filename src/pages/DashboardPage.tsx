@@ -703,6 +703,13 @@ const Dashboard = () => {
     { name: "Jun", Sales: 239, Profit: 143 },
   ];
 
+  const categoryColors = React.useMemo(() => {
+    return {
+      Sales: { color: "#2563eb" },
+      Profit: { color: "#4ade80" }
+    };
+  }, []);
+
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
@@ -710,24 +717,58 @@ const Dashboard = () => {
       <div className="grid gap-6 md:grid-cols-2">
         <div>
           <h2 className="text-lg font-semibold mb-2">Sales Overview</h2>
-          <AreaChart 
-            data={salesData}
-            categories={["Sales", "Profit"]}
-            index="name"
-            valueFormatter={(value) => `R$ ${value}`}
+          <ChartContainer
+            config={categoryColors}
             className="h-[300px]"
-          />
+          >
+            <RechartsPrimitive.AreaChart data={salesData}>
+              <defs>
+                <linearGradient id="gradient-Sales" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563eb" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradient-Profit" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4ade80" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="#4ade80" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+              <RechartsPrimitive.XAxis dataKey="name" tickLine={false} axisLine={false} />
+              <RechartsPrimitive.YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `R$ ${value}`} />
+              <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+              <RechartsPrimitive.Area
+                type="monotone"
+                dataKey="Sales"
+                stroke="#2563eb"
+                strokeWidth={2}
+                fill="url(#gradient-Sales)"
+              />
+              <RechartsPrimitive.Area
+                type="monotone"
+                dataKey="Profit"
+                stroke="#4ade80"
+                strokeWidth={2}
+                fill="url(#gradient-Profit)"
+              />
+            </RechartsPrimitive.AreaChart>
+          </ChartContainer>
         </div>
         
         <div>
           <h2 className="text-lg font-semibold mb-2">Monthly Performance</h2>
-          <BarChart 
-            data={salesData}
-            categories={["Sales", "Profit"]}
-            index="name"
-            valueFormatter={(value) => `R$ ${value}`}
+          <ChartContainer
+            config={categoryColors}
             className="h-[300px]"
-          />
+          >
+            <RechartsPrimitive.BarChart data={salesData}>
+              <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+              <RechartsPrimitive.XAxis dataKey="name" tickLine={false} axisLine={false} />
+              <RechartsPrimitive.YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `R$ ${value}`} />
+              <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+              <RechartsPrimitive.Bar dataKey="Sales" fill="#2563eb" />
+              <RechartsPrimitive.Bar dataKey="Profit" fill="#4ade80" />
+            </RechartsPrimitive.BarChart>
+          </ChartContainer>
         </div>
       </div>
     </div>
