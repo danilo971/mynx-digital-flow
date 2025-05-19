@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
@@ -137,7 +138,7 @@ const ChartTooltipContent = React.forwardRef<
       }
 
       const [item] = payload
-      const key = `${labelKey || item.dataKey || item.name || "value"}`
+      const key = `${labelKey || item?.dataKey || item?.name || "value"}`
       const itemConfig = getPayloadConfigFromPayload(config, item, key)
       const value =
         !labelKey && typeof label === "string"
@@ -184,20 +185,20 @@ const ChartTooltipContent = React.forwardRef<
         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
           {payload.map((item, index) => {
-            const key = `${nameKey || item.name || item.dataKey || "value"}`
+            const key = `${nameKey || item?.name || item?.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color || item.payload.fill || item.color
+            const indicatorColor = color || item?.payload?.fill || item?.color
 
             return (
               <div
-                key={item.dataKey?.toString() || index}
+                key={item?.dataKey?.toString() || index}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
                 )}
               >
-                {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                {formatter && item?.value !== undefined && item?.name ? (
+                  formatter(item.value, item.name, item, index, item?.payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -233,10 +234,10 @@ const ChartTooltipContent = React.forwardRef<
                       <div className="grid gap-1.5">
                         {nestLabel ? tooltipLabel : null}
                         <span className="text-muted-foreground">
-                          {itemConfig?.label || item.name}
+                          {itemConfig?.label || item?.name}
                         </span>
                       </div>
-                      {item.value && (
+                      {item?.value && (
                         <span className="font-mono font-medium tabular-nums text-foreground">
                           {item.value.toLocaleString()}
                         </span>
@@ -284,12 +285,12 @@ const ChartLegendContent = React.forwardRef<
         )}
       >
         {payload.map((item) => {
-          const key = `${nameKey || item.dataKey || "value"}`
+          const key = `${nameKey || item?.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (
             <div
-              key={item.value}
+              key={item?.value}
               className={cn(
                 "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground"
               )}
@@ -300,7 +301,7 @@ const ChartLegendContent = React.forwardRef<
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"
                   style={{
-                    backgroundColor: item.color,
+                    backgroundColor: item?.color,
                   }}
                 />
               )}
@@ -689,3 +690,48 @@ export {
   BarChart,
   PieChart
 }
+
+// Create a simple Dashboard component
+const Dashboard = () => {
+  // Example data for dashboard
+  const salesData = [
+    { name: "Jan", Sales: 400, Profit: 240 },
+    { name: "Feb", Sales: 300, Profit: 180 },
+    { name: "Mar", Sales: 200, Profit: 120 },
+    { name: "Apr", Sales: 278, Profit: 167 },
+    { name: "May", Sales: 189, Profit: 113 },
+    { name: "Jun", Sales: 239, Profit: 143 },
+  ];
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        <div>
+          <h2 className="text-lg font-semibold mb-2">Sales Overview</h2>
+          <AreaChart 
+            data={salesData}
+            categories={["Sales", "Profit"]}
+            index="name"
+            valueFormatter={(value) => `R$ ${value}`}
+            className="h-[300px]"
+          />
+        </div>
+        
+        <div>
+          <h2 className="text-lg font-semibold mb-2">Monthly Performance</h2>
+          <BarChart 
+            data={salesData}
+            categories={["Sales", "Profit"]}
+            index="name"
+            valueFormatter={(value) => `R$ ${value}`}
+            className="h-[300px]"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
