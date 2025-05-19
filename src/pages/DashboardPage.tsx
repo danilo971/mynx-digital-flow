@@ -335,13 +335,23 @@ const DashboardPage = () => {
             <CardDescription>Análise das últimas 7 semanas</CardDescription>
           </CardHeader>
           <CardContent>
-            <BarChart
+            <AreaChart
               data={vendasSemanais}
               index="name"
               categories={['total']}
-              colors={['blue']}
+              colors={['#8b5cf6']}
               valueFormatter={(value) => formatarMoeda(value)}
               className="aspect-[4/3]"
+              showLegend={false}
+              showXAxis={true}
+              showYAxis={true}
+              yAxisWidth={60}
+              showAnimation={true}
+              curveType="monotone"
+              showGridLines={false}
+              showGradient={true}
+              startEndOnly={false}
+              autoMinValue={true}
             />
           </CardContent>
         </Card>
