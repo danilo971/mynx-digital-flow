@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -44,12 +43,10 @@ const POSPage = () => {
     }
   });
   
-  // Get quantity with proper validation and fallback
-  const rawQuantity = watch('quantity');
-  const quantity = (rawQuantity === '' || rawQuantity === undefined || isNaN(Number(rawQuantity))) 
-    ? 1 
-    : Number(rawQuantity);
+  // Observar o valor do campo de quantidade para UI e validação
+  const watchedQuantity = watch('quantity');
   
+  // Obter o valor do paymentMethod para UI
   const paymentMethod = watch('paymentMethod');
   
   // Calculate sale total
@@ -81,13 +78,15 @@ const POSPage = () => {
       return;
     }
     
-    // Enhanced quantity validation with logs
-    const safeQuantity = Math.max(1, Number(quantity) || 1);
-    console.log('Valor bruto da quantidade:', rawQuantity);
-    console.log('Tipo do valor bruto:', typeof rawQuantity);
-    console.log('Quantidade convertida:', safeQuantity);
+    // Obter o valor diretamente do DOM para garantir precisão
+    const inputValue = quantityInputRef.current ? quantityInputRef.current.value : '1';
+    console.log('Valor direto do input DOM:', inputValue, typeof inputValue);
     
-    if (safeQuantity <= 0 || isNaN(safeQuantity)) {
+    // Conversão explícita com parseInt para garantir número inteiro
+    const safeQuantity = parseInt(inputValue, 10) || 1;
+    console.log('Quantidade final usada no carrinho:', safeQuantity, typeof safeQuantity);
+    
+    if (safeQuantity <= 0) {
       toast({
         variant: "destructive",
         title: "Quantidade inválida",
@@ -96,8 +95,9 @@ const POSPage = () => {
       return;
     }
     
-    // Guaranteed safe price and quantity
+    // Guaranteed safe price
     const price = Number(selectedProduct.price) || 0;
+    // Calculate subtotal with the correct quantity
     const subtotal = safeQuantity * price;
     
     console.log('Preço:', price);
@@ -109,16 +109,20 @@ const POSPage = () => {
       id: selectedProduct.id,
       name: selectedProduct.name,
       code: selectedProduct.code,
-      quantity: safeQuantity,
+      quantity: safeQuantity, // Usar o valor obtido diretamente do DOM
       price: price,
       subtotal: subtotal
     };
+    
+    console.log('Item adicionado ao carrinho:', newItem);
     
     setCartItems([...cartItems, newItem]);
     
     // Reset form and selection with explicit validation
     setValue('quantity', 1, { shouldValidate: true });
     setSelectedProduct(null);
+    
+    console.log('Valor após reset:', watch('quantity'));
     
     toast({
       title: "Produto adicionado",
@@ -294,8 +298,8 @@ const POSPage = () => {
                             <TableCell className="text-right">
                               {item.quantity}
                             </TableCell>
-                            <TableCell className="text-right">{formatCurrency(Number(item.price))}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(Number(item.subtotal))}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -438,7 +442,6 @@ const POSPage = () => {
                     description: "Todos os produtos foram removidos.",
                   });
                 }}
-                disabled={cartItems.length === 0}
               >
                 <X className="mr-2 h-4 w-4" />
                 Cancelar Venda
