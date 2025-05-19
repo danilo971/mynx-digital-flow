@@ -50,15 +50,8 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
           console.log('Iniciando busca por:', term);
           const results = await productService.searchProducts(term);
           console.log('Resultados recebidos:', results);
-          
-          // Garantir que o preço é um número
-          const formattedResults = results.map(product => ({
-            ...product,
-            price: Number(product.price)
-          }));
-          
-          setSearchResults(formattedResults);
-          setIsSearching(formattedResults.length > 0);
+          setSearchResults(results);
+          setIsSearching(results.length > 0);
         } catch (error) {
           console.error('Erro na busca de produtos:', error);
         } finally {
@@ -124,10 +117,7 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
                   key={product.id}
                   className="cursor-pointer rounded-md p-2 hover:bg-accent"
                   onClick={() => {
-                    onProductSelect({
-                      ...product,
-                      price: Number(product.price) // Garantir que o preço é um número
-                    });
+                    onProductSelect(product);
                     setIsSearching(false);
                   }}
                 >
