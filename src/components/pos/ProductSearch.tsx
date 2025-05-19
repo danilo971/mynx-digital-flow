@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { productService, type ProductSearchResult } from '@/services/productService';
 
 interface ProductSearchProps {
-  onProductSelect: (product: ProductSearchResult) => void;
+  onProductSelect: (product: ProductSearchResult | null) => void;
   selectedProduct: ProductSearchResult | null;
 }
 
@@ -125,7 +125,7 @@ export function ProductSearch({ onProductSelect, selectedProduct }: ProductSearc
                   <div className="flex justify-between text-sm">
                     <span>{product.code}</span>
                     <span className="font-semibold text-primary">
-                      {formatCurrency(product.price)}
+                      {formatCurrency(Number(product.price))}
                     </span>
                   </div>
                 </div>

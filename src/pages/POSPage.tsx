@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { X, Plus, Trash2, ShoppingCart, Printer, Save, Check } from 'lucide-react';
+import { X, Plus, Trash2, ShoppingCart, Printer, Save, Check, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,10 +14,12 @@ import { ProductSearch } from '@/components/pos/ProductSearch';
 import type { ProductSearchResult } from '@/services/productService';
 import { saleService, type SaleProduct } from '@/services/saleService';
 import { useNavigate } from 'react-router-dom';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type SaleForm = {
   quantity: number;
   observations: string;
+  paymentMethod: string;
 };
 
 const POSPage = () => {
@@ -38,10 +40,12 @@ const POSPage = () => {
     defaultValues: {
       quantity: 1,
       observations: '',
+      paymentMethod: '',
     }
   });
   
-  const quantity = watch('quantity');
+  const quantity = Number(watch('quantity'));
+  const paymentMethod = watch('paymentMethod');
   
   // Calculate sale total
   const calculateTotal = () => {
@@ -81,14 +85,18 @@ const POSPage = () => {
       return;
     }
     
+    // Garantir que preço e quantidade sejam números
+    const price = Number(selectedProduct.price);
+    const subtotal = quantity * price;
+    
     // Add product to cart
     const newItem: SaleProduct = {
       id: selectedProduct.id,
       name: selectedProduct.name,
       code: selectedProduct.code,
       quantity: quantity,
-      price: selectedProduct.price,
-      subtotal: quantity * selectedProduct.price
+      price: price,
+      subtotal: subtotal
     };
     
     setCartItems([...cartItems, newItem]);
@@ -124,6 +132,15 @@ const POSPage = () => {
       return;
     }
     
+    if (!formData.paymentMethod) {
+      toast({
+        variant: "destructive",
+        title: "Forma de pagamento não selecionada",
+        description: "Por favor, selecione uma forma de pagamento para finalizar a venda.",
+      });
+      return;
+    }
+    
     try {
       // Prepare sale data
       const saleData = {
@@ -131,6 +148,7 @@ const POSPage = () => {
         total: calculateTotal(),
         itemCount: cartItems.reduce((total, item) => total + item.quantity, 0),
         observations: formData.observations,
+        paymentMethod: formData.paymentMethod
       };
       
       // Send to API
@@ -260,8 +278,8 @@ const POSPage = () => {
                             <TableCell className="text-right">
                               {item.quantity}
                             </TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(Number(item.price))}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(Number(item.subtotal))}</TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -283,6 +301,29 @@ const POSPage = () => {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+                
+                {/* Payment Method */}
+                <div>
+                  <Label htmlFor="paymentMethod" className="mb-1 block">Forma de Pagamento *</Label>
+                  <Select 
+                    value={paymentMethod} 
+                    onValueChange={(value) => setValue("paymentMethod", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione a forma de pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="cartao">Cartão</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!paymentMethod && cartItems.length > 0 && (
+                    <p className="mt-1 text-xs text-amber-500">
+                      Selecione uma forma de pagamento para finalizar
+                    </p>
+                  )}
                 </div>
                 
                 {/* Observations */}
@@ -323,6 +364,18 @@ const POSPage = () => {
                 </span>
               </div>
               
+              {/* Payment Method */}
+              {paymentMethod && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Forma de pagamento:</span>
+                  <span className="flex items-center">
+                    <CreditCard className="h-4 w-4 mr-1" />
+                    {paymentMethod === 'pix' ? 'PIX' : 
+                     paymentMethod === 'dinheiro' ? 'Dinheiro' : 'Cartão'}
+                  </span>
+                </div>
+              )}
+              
               {/* Total */}
               <div className="flex justify-between text-xl font-bold">
                 <span>Total:</span>
@@ -340,7 +393,7 @@ const POSPage = () => {
               <Button
                 className="w-full"
                 onClick={handleSubmit(handleFinalizeSale)}
-                disabled={cartItems.length === 0}
+                disabled={cartItems.length === 0 || !paymentMethod}
               >
                 <Check className="mr-2 h-4 w-4" />
                 Finalizar Venda

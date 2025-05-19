@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Search, Download, Filter, ShoppingBag, Calendar, AlertCircle } from 'lucide-react';
+import { FileText, Search, Download, Filter, ShoppingBag, Calendar, AlertCircle, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -57,12 +57,25 @@ const SalesPage = () => {
     });
   };
   
+  // Format payment method
+  const formatPaymentMethod = (method: string | null) => {
+    if (!method) return "Não especificado";
+    
+    switch(method.toLowerCase()) {
+      case 'pix': return "PIX";
+      case 'dinheiro': return "Dinheiro";
+      case 'cartao': return "Cartão";
+      default: return method;
+    }
+  };
+  
   // Filter sales based on search term
   const filteredSales = sales.filter(sale => 
-    // Filtrar por data, valor ou ID
+    // Filtrar por data, valor, ID ou forma de pagamento
     formatDate(sale.date).toLowerCase().includes(searchTerm.toLowerCase()) ||
     sale.total.toString().includes(searchTerm) ||
-    sale.id.toLowerCase().includes(searchTerm.toLowerCase())
+    sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (sale.payment_method && sale.payment_method.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
   return (
@@ -166,6 +179,7 @@ const SalesPage = () => {
                     <TableHead>Data</TableHead>
                     <TableHead>Itens</TableHead>
                     <TableHead>Total</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[100px] text-right">Ações</TableHead>
                   </TableRow>
@@ -183,6 +197,12 @@ const SalesPage = () => {
                       <TableCell>{formatDate(sale.date)}</TableCell>
                       <TableCell>{sale.item_count}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(Number(sale.total))}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 mr-1 text-muted-foreground" />
+                          {formatPaymentMethod(sale.payment_method)}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <span className="inline-flex h-6 items-center rounded-full bg-green-100 px-2.5 text-xs font-medium text-green-800 dark:bg-green-700/20 dark:text-green-300">
                           {sale.status}

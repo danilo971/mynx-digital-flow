@@ -1,6 +1,6 @@
 
 import { supabase, handleApiError } from '@/lib/supabase';
-import { Database } from '@/lib/database.types';
+import { Database } from '@/integrations/supabase/types';
 import { v4 as uuidv4 } from 'uuid';
 
 export type Sale = Database['public']['Tables']['sales']['Row'];
@@ -21,6 +21,7 @@ export type NewSale = {
   itemCount: number;
   observations?: string;
   customer?: string;
+  paymentMethod: string; // Campo adicionado para forma de pagamento
 };
 
 export const saleService = {
@@ -40,7 +41,8 @@ export const saleService = {
           total: saleData.total,
           item_count: saleData.itemCount,
           observations: saleData.observations || null,
-          customer: saleData.customer || null
+          customer: saleData.customer || null,
+          payment_method: saleData.paymentMethod // Campo adicionado para forma de pagamento
         }])
         .select()
         .single();

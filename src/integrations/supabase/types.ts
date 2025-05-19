@@ -101,6 +101,7 @@ export type Database = {
           id: string
           item_count: number
           observations: string | null
+          payment_method: string | null
           status: string
           total: number
         }
@@ -111,6 +112,7 @@ export type Database = {
           id?: string
           item_count?: number
           observations?: string | null
+          payment_method?: string | null
           status?: string
           total?: number
         }
@@ -121,6 +123,7 @@ export type Database = {
           id?: string
           item_count?: number
           observations?: string | null
+          payment_method?: string | null
           status?: string
           total?: number
         }
