@@ -21,7 +21,7 @@ export type NewSale = {
   itemCount: number;
   observations?: string;
   customer?: string;
-  paymentMethod: string; // Campo adicionado para forma de pagamento
+  paymentMethod: string;
 };
 
 export const saleService = {
@@ -32,17 +32,33 @@ export const saleService = {
     try {
       console.log('Iniciando criação de venda:', saleData);
       
+      // Garantir que total é um número válido
+      const total = Number(saleData.total);
+      if (isNaN(total)) {
+        throw new Error('O valor total da venda é inválido');
+      }
+
+      // Verificar se há itens na venda
+      if (!saleData.items || saleData.items.length === 0) {
+        throw new Error('A venda deve conter pelo menos um item');
+      }
+
+      // Verificar se o método de pagamento foi selecionado
+      if (!saleData.paymentMethod) {
+        throw new Error('A forma de pagamento deve ser selecionada');
+      }
+      
       // Criar registro principal da venda
       const saleId = uuidv4();
       const { data: saleResult, error: saleError } = await supabase
         .from('sales')
         .insert([{
           id: saleId,
-          total: saleData.total,
+          total: total,
           item_count: saleData.itemCount,
           observations: saleData.observations || null,
           customer: saleData.customer || null,
-          payment_method: saleData.paymentMethod // Campo adicionado para forma de pagamento
+          payment_method: saleData.paymentMethod
         }])
         .select()
         .single();
@@ -55,13 +71,24 @@ export const saleService = {
       console.log('Venda criada com sucesso:', saleResult);
       
       // Criar itens da venda
-      const saleItems = saleData.items.map(item => ({
-        sale_id: saleId,
-        product_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        subtotal: item.subtotal
-      }));
+      const saleItems = saleData.items.map(item => {
+        // Garantir que os valores numéricos são tratados como números
+        const quantity = Number(item.quantity);
+        const price = Number(item.price);
+        const subtotal = quantity * price;
+        
+        if (isNaN(quantity) || isNaN(price) || isNaN(subtotal)) {
+          throw new Error(`Valores inválidos para o produto ${item.name}`);
+        }
+        
+        return {
+          sale_id: saleId,
+          product_id: item.id,
+          quantity: quantity,
+          price: price,
+          subtotal: subtotal
+        };
+      });
       
       const { error: itemsError } = await supabase
         .from('sale_items')

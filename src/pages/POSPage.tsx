@@ -49,7 +49,11 @@ const POSPage = () => {
   
   // Calculate sale total
   const calculateTotal = () => {
-    return cartItems.reduce((total, item) => total + item.subtotal, 0);
+    // Garantir que o subtotal de cada item é um número válido
+    return cartItems.reduce((total, item) => {
+      const subtotal = Number(item.subtotal);
+      return total + (isNaN(subtotal) ? 0 : subtotal);
+    }, 0);
   };
   
   // Handle product selection from search
@@ -76,7 +80,7 @@ const POSPage = () => {
       return;
     }
     
-    if (quantity <= 0) {
+    if (quantity <= 0 || isNaN(quantity)) {
       toast({
         variant: "destructive",
         title: "Quantidade inválida",
@@ -87,6 +91,15 @@ const POSPage = () => {
     
     // Garantir que preço e quantidade sejam números
     const price = Number(selectedProduct.price);
+    if (isNaN(price)) {
+      toast({
+        variant: "destructive",
+        title: "Preço inválido",
+        description: "O preço do produto é inválido.",
+      });
+      return;
+    }
+    
     const subtotal = quantity * price;
     
     // Add product to cart
@@ -99,7 +112,7 @@ const POSPage = () => {
       subtotal: subtotal
     };
     
-    setCartItems([...cartItems, newItem]);
+    setCartItems(prevItems => [...prevItems, newItem]);
     
     // Reset form and selection
     setValue('quantity', 1);
@@ -141,12 +154,44 @@ const POSPage = () => {
       return;
     }
     
+    // Verificar se há algum valor inválido
+    const invalidItems = cartItems.filter(item => 
+      isNaN(Number(item.price)) || 
+      isNaN(Number(item.quantity)) || 
+      isNaN(Number(item.subtotal))
+    );
+    
+    if (invalidItems.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Valores inválidos",
+        description: "Há produtos com valores inválidos no carrinho.",
+      });
+      return;
+    }
+    
+    // Calcular o total da venda
+    const total = calculateTotal();
+    if (isNaN(total) || total <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Total inválido",
+        description: "O valor total da venda é inválido.",
+      });
+      return;
+    }
+    
     try {
       // Prepare sale data
       const saleData = {
-        items: cartItems,
-        total: calculateTotal(),
-        itemCount: cartItems.reduce((total, item) => total + item.quantity, 0),
+        items: cartItems.map(item => ({
+          ...item,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          subtotal: Number(item.subtotal)
+        })),
+        total: total,
+        itemCount: cartItems.reduce((total, item) => total + Number(item.quantity), 0),
         observations: formData.observations,
         paymentMethod: formData.paymentMethod
       };
@@ -157,7 +202,7 @@ const POSPage = () => {
       if (result) {
         toast({
           title: "Venda finalizada com sucesso!",
-          description: `Total: ${formatCurrency(calculateTotal())}`,
+          description: `Total: ${formatCurrency(total)}`,
         });
         
         // Reset cart and form
@@ -174,7 +219,7 @@ const POSPage = () => {
       toast({
         variant: "destructive",
         title: "Erro ao finalizar venda",
-        description: "Ocorreu um erro ao processar a venda.",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a venda.",
       });
     }
   };
@@ -276,7 +321,7 @@ const POSPage = () => {
                             <TableCell className="font-medium">{item.code}</TableCell>
                             <TableCell>{item.name}</TableCell>
                             <TableCell className="text-right">
-                              {item.quantity}
+                              {Number(item.quantity)}
                             </TableCell>
                             <TableCell className="text-right">{formatCurrency(Number(item.price))}</TableCell>
                             <TableCell className="text-right">{formatCurrency(Number(item.subtotal))}</TableCell>
@@ -360,7 +405,10 @@ const POSPage = () => {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Quantidade:</span>
                 <span>
-                  {cartItems.reduce((total, item) => total + item.quantity, 0)} itens
+                  {cartItems.reduce((total, item) => {
+                    const qty = Number(item.quantity);
+                    return total + (isNaN(qty) ? 0 : qty);
+                  }, 0)} itens
                 </span>
               </div>
               
