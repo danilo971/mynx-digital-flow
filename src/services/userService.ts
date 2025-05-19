@@ -1,4 +1,5 @@
 import { supabase, handleApiError } from '@/lib/supabase';
+import { useToast, toast } from "@/hooks/use-toast";
 import { Database } from '@/integrations/supabase/types';
 
 // We need to extend the UserProfile to include the missing properties

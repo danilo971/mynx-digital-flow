@@ -80,7 +80,14 @@ const POSPage = () => {
       return;
     }
     
-    if (quantity <= 0 || isNaN(quantity)) {
+    // Corrigida a validação de quantidade com logs para debug
+    const qtdNumerica = Number(quantity);
+    console.log('Quantidade informada:', quantity);
+    console.log('Quantidade convertida (número):', qtdNumerica);
+    console.log('Tipo de dado após conversão:', typeof qtdNumerica);
+    console.log('É maior que zero?', qtdNumerica > 0);
+    
+    if (isNaN(qtdNumerica) || qtdNumerica <= 0) {
       toast({
         variant: "destructive",
         title: "Quantidade inválida",
@@ -89,7 +96,7 @@ const POSPage = () => {
       return;
     }
     
-    // Garantir que preço e quantidade sejam números
+    // Garantir que preço seja um número
     const price = Number(selectedProduct.price);
     if (isNaN(price)) {
       toast({
@@ -100,14 +107,19 @@ const POSPage = () => {
       return;
     }
     
-    const subtotal = quantity * price;
+    // Calcular subtotal corretamente usando os números validados
+    const subtotal = qtdNumerica * price;
+    console.log('Adicionando ao carrinho:', selectedProduct.name);
+    console.log('Quantidade:', qtdNumerica);
+    console.log('Preço:', price);
+    console.log('Subtotal:', subtotal);
     
-    // Add product to cart
+    // Add product to cart with the correct quantity
     const newItem: SaleProduct = {
       id: selectedProduct.id,
       name: selectedProduct.name,
       code: selectedProduct.code,
-      quantity: quantity,
+      quantity: qtdNumerica,
       price: price,
       subtotal: subtotal
     };
@@ -182,7 +194,7 @@ const POSPage = () => {
     }
     
     try {
-      // Prepare sale data
+      // Prepare sale data with explicit numeric conversions
       const saleData = {
         items: cartItems.map(item => ({
           ...item,
@@ -195,6 +207,8 @@ const POSPage = () => {
         observations: formData.observations,
         paymentMethod: formData.paymentMethod
       };
+      
+      console.log('Finalizando venda com os dados:', saleData);
       
       // Send to API
       const result = await saleService.createSale(saleData);
