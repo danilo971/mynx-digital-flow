@@ -1,4 +1,4 @@
-
+import React from "react";
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Edit, Trash2, UserCheck, UserX, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
@@ -20,6 +20,25 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { userService, UserProfile } from '@/services/userService';
+
+// Define proper interface for UserProfile to include missing properties
+interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  phone?: string;
+  role?: string;
+  created_at?: string;
+  last_sign_in_at?: string;
+  active?: boolean; // Add missing property
+  permissions?: {
+    manageUsers?: boolean;
+    manageProducts?: boolean;
+    manageSales?: boolean;
+    viewReports?: boolean;
+  }; // Add missing property
+}
 
 const UsersPage = () => {
   const [search, setSearch] = useState('');
@@ -106,22 +125,32 @@ const UsersPage = () => {
   };
   
   // Handle user status toggle
-  const handleToggleUserStatus = async (user: UserProfile) => {
+  const toggleUserStatus = async (user: UserProfile) => {
     try {
-      const newStatus = !user.active;
-      const result = await userService.updateUser(user.id, { active: newStatus });
+      // Access the active property safely
+      const newStatus = user.active !== undefined ? !user.active : true;
       
-      if (result) {
+      // Update with the active property
+      await updateUser(user.id, { 
+        active: newStatus
+      });
+      
+      if (newStatus) {
         toast({
-          title: newStatus ? "Usuário ativado" : "Usuário desativado",
-          description: `${user.name} foi ${newStatus ? 'ativado' : 'desativado'} com sucesso.`,
+          title: "Usuário ativado",
+          description: `${user.name} foi ativado com sucesso.`,
         });
-        
-        // Update user in the list
-        setUsers(prev => 
-          prev.map(u => u.id === user.id ? { ...u, active: newStatus } : u)
-        );
+      } else {
+        toast({
+          title: "Usuário desativado",
+          description: `${user.name} foi desativado com sucesso.`,
+        });
       }
+      
+      // Update user in the list
+      setUsers(prev => 
+        prev.map(u => u.id === user.id ? { ...u, active: newStatus } : u)
+      );
     } catch (error) {
       console.error('Erro ao atualizar status do usuário:', error);
       toast({
@@ -362,14 +391,14 @@ const UsersPage = () => {
                               <DropdownMenuSeparator />
                               {user.active !== false ? (
                                 <DropdownMenuItem
-                                  onClick={() => handleToggleUserStatus(user)}
+                                  onClick={() => toggleUserStatus(user)}
                                 >
                                   <XCircle className="mr-2 h-4 w-4" />
                                   Desativar
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
-                                  onClick={() => handleToggleUserStatus(user)}
+                                  onClick={() => toggleUserStatus(user)}
                                 >
                                   <CheckCircle2 className="mr-2 h-4 w-4" />
                                   Ativar
