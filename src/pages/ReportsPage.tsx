@@ -6,9 +6,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AreaChart, BarChart as RechartBarChart, PieChart as RechartPieChart } from '@/components/ui/chart';
 import { supabase } from '@/integrations/supabase/client';
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 
 type DateRange = 'day' | 'week' | 'month' | 'year';
 
@@ -143,7 +140,7 @@ const ReportsPage = () => {
         .gte('created_at', start)
         .lte('created_at', end);
       
-      const totalSalesAmount = salesData?.reduce((sum, sale) => sum + sale.total, 0) || 0;
+      const totalSalesAmount = salesData?.reduce((sum, sale) => sum + (sale.total || 0), 0) || 0;
       setTotalSales(totalSalesAmount);
       
       // Total de vendas (contagem)
@@ -166,7 +163,7 @@ const ReportsPage = () => {
         .gte('created_at', start)
         .lte('created_at', end);
       
-      const totalItems = saleItemsData?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+      const totalItems = saleItemsData?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
       setTotalProductsSold(totalItems);
       
       // Taxa de crescimento (comparação com período anterior)
@@ -178,7 +175,7 @@ const ReportsPage = () => {
         .gte('created_at', prevStart)
         .lte('created_at', prevEnd);
       
-      const prevTotalSales = prevSalesData?.reduce((sum, sale) => sum + sale.total, 0) || 0;
+      const prevTotalSales = prevSalesData?.reduce((sum, sale) => sum + (sale.total || 0), 0) || 0;
       const growth = calculateGrowthRate(totalSalesAmount, prevTotalSales);
       setGrowthRate(growth);
       
@@ -225,7 +222,7 @@ const ReportsPage = () => {
             const bucket = Math.floor(hour / 3) * 3;
             const formattedHour = bucket.toString().padStart(2, '0') + ':00';
             
-            hourlyData[formattedHour] += sale.total;
+            hourlyData[formattedHour] += sale.total || 0;
           });
           
           formattedData = Object.entries(hourlyData).map(([name, total]) => ({ name, total }));
@@ -249,7 +246,7 @@ const ReportsPage = () => {
           data?.forEach(sale => {
             const saleDate = new Date(sale.created_at);
             const weekday = weekdayNames[saleDate.getDay()];
-            weekdayData[weekday] += sale.total;
+            weekdayData[weekday] += sale.total || 0;
           });
           
           formattedData = Object.entries(weekdayData).map(([name, total]) => ({ name, total }));
@@ -275,13 +272,13 @@ const ReportsPage = () => {
             const dayOfMonth = saleDate.getDate();
             
             if (dayOfMonth <= 7) {
-              weekData['Semana 1'] += sale.total;
+              weekData['Semana 1'] += sale.total || 0;
             } else if (dayOfMonth <= 14) {
-              weekData['Semana 2'] += sale.total;
+              weekData['Semana 2'] += sale.total || 0;
             } else if (dayOfMonth <= 21) {
-              weekData['Semana 3'] += sale.total;
+              weekData['Semana 3'] += sale.total || 0;
             } else {
-              weekData['Semana 4'] += sale.total;
+              weekData['Semana 4'] += sale.total || 0;
             }
           });
           
@@ -306,7 +303,7 @@ const ReportsPage = () => {
           data?.forEach(sale => {
             const saleDate = new Date(sale.created_at);
             const month = monthNames[saleDate.getMonth()];
-            monthData[month] += sale.total;
+            monthData[month] += sale.total || 0;
           });
           
           formattedData = Object.entries(monthData).map(([name, total]) => ({ name, total }));
@@ -352,7 +349,7 @@ const ReportsPage = () => {
           categoryData[category] = 0;
         }
         
-        categoryData[category] += item.quantity;
+        categoryData[category] += item.quantity || 0;
       });
       
       // Formatar para o gráfico de pizza
@@ -400,12 +397,12 @@ const ReportsPage = () => {
           };
         }
         
-        productData[productId].quantity += item.quantity;
+        productData[productId].quantity += item.quantity || 0;
       });
       
       // Converter para array, ordenar e pegar os top 10
       const formattedData = Object.values(productData)
-        .sort((a, b) => b.quantity - a.quantity)
+        .sort((a: any, b: any) => b.quantity - a.quantity)
         .slice(0, 10);
       
       setTopProductsData(formattedData);
@@ -441,151 +438,186 @@ const ReportsPage = () => {
   // Função para exportar relatório em PDF
   const exportToPDF = () => {
     try {
-      const doc = new jsPDF();
+      // Aqui usaremos uma abordagem mais simples sem depender de bibliotecas externas
+      // Vamos criar uma nova janela com o conteúdo formatado para impressão
+      const printWindow = window.open('', '_blank');
       
-      // Título
-      doc.setFontSize(18);
-      doc.text('Relatório de Vendas', 105, 15, { align: 'center' });
+      if (!printWindow) {
+        alert('Por favor, permita popups para exportar o PDF');
+        return;
+      }
       
-      // Período
-      doc.setFontSize(12);
-      doc.text(`Período: ${dateRange === 'day' ? 'Diário' : 
-                         dateRange === 'week' ? 'Semanal' : 
-                         dateRange === 'month' ? 'Mensal' : 'Anual'}`, 105, 25, { align: 'center' });
+      // Criar conteúdo HTML para impressão
+      const content = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Relatório de Vendas - ${dateRange}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1, h2 { color: #333; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+            .section { margin-bottom: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Relatório de Vendas</h1>
+            <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+          </div>
+          
+          <div class="section">
+            <h2>Resumo Geral</h2>
+            <table>
+              <tr>
+                <th>Métrica</th>
+                <th>Valor</th>
+              </tr>
+              <tr>
+                <td>Total de Vendas</td>
+                <td>${formatCurrency(totalSales)}</td>
+              </tr>
+              <tr>
+                <td>Ticket Médio</td>
+                <td>${formatCurrency(averageTicket)}</td>
+              </tr>
+              <tr>
+                <td>Total de Produtos Vendidos</td>
+                <td>${totalProductsSold}</td>
+              </tr>
+              <tr>
+                <td>Total de Clientes Atendidos</td>
+                <td>${totalCustomers}</td>
+              </tr>
+              <tr>
+                <td>Taxa de Crescimento</td>
+                <td>${growthRate.toFixed(2)}%</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>Produtos Mais Vendidos</h2>
+            <table>
+              <tr>
+                <th>Produto</th>
+                <th>Quantidade</th>
+              </tr>
+              ${topProductsData.map((product: any) => `
+                <tr>
+                  <td>${product.name}</td>
+                  <td>${product.quantity}</td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>Análise de Estoque</h2>
+            <table>
+              <tr>
+                <th>Produto</th>
+                <th>Estoque</th>
+                <th>Status</th>
+              </tr>
+              ${stockAnalysisData.critical.map(product => `
+                <tr>
+                  <td>${product.name}</td>
+                  <td>${product.stock}</td>
+                  <td style="color: red;">Crítico</td>
+                </tr>
+              `).join('')}
+              ${stockAnalysisData.low.map(product => `
+                <tr>
+                  <td>${product.name}</td>
+                  <td>${product.stock}</td>
+                  <td style="color: orange;">Baixo</td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+        </html>
+      `;
       
-      // Data de geração
-      const today = new Date().toLocaleDateString('pt-BR');
-      doc.text(`Gerado em: ${today}`, 105, 30, { align: 'center' });
-      
-      // Resumo
-      doc.setFontSize(14);
-      doc.text('Resumo Geral', 14, 40);
-      
-      const resumoData = [
-        ['Total de Vendas', formatCurrency(totalSales)],
-        ['Ticket Médio', formatCurrency(averageTicket)],
-        ['Total de Produtos Vendidos', totalProductsSold.toString()],
-        ['Total de Clientes Atendidos', totalCustomers.toString()],
-        ['Taxa de Crescimento', `${growthRate.toFixed(2)}%`]
-      ];
-      
-      doc.autoTable({
-        startY: 45,
-        head: [['Métrica', 'Valor']],
-        body: resumoData,
-        theme: 'grid'
-      });
-      
-      // Produtos mais vendidos
-      doc.setFontSize(14);
-      doc.text('Produtos Mais Vendidos', 14, doc.lastAutoTable.finalY + 15);
-      
-      const produtosData = topProductsData.map(product => [
-        product.name,
-        product.quantity.toString()
-      ]);
-      
-      doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 20,
-        head: [['Produto', 'Quantidade']],
-        body: produtosData,
-        theme: 'grid'
-      });
-      
-      // Análise de estoque
-      doc.setFontSize(14);
-      doc.text('Análise de Estoque', 14, doc.lastAutoTable.finalY + 15);
-      
-      const estoqueData = [
-        ...stockAnalysisData.critical.map(product => [
-          product.name,
-          product.stock.toString(),
-          'Crítico'
-        ]),
-        ...stockAnalysisData.low.map(product => [
-          product.name,
-          product.stock.toString(),
-          'Baixo'
-        ])
-      ];
-      
-      doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 20,
-        head: [['Produto', 'Estoque', 'Status']],
-        body: estoqueData,
-        theme: 'grid'
-      });
-      
-      // Salvar o PDF
-      doc.save(`relatorio-vendas-${dateRange}-${today}.pdf`);
+      printWindow.document.write(content);
+      printWindow.document.close();
       
     } catch (error) {
       console.error('Erro ao exportar para PDF:', error);
+      alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
     }
   };
   
   // Função para exportar relatório em Excel
   const exportToExcel = () => {
     try {
-      // Criar workbook
-      const wb = XLSX.utils.book_new();
+      // Criar um CSV para download
+      let csvContent = "data:text/csv;charset=utf-8,";
       
-      // Resumo geral
-      const resumoData = [
-        ['Métrica', 'Valor'],
-        ['Total de Vendas', totalSales],
-        ['Ticket Médio', averageTicket],
-        ['Total de Produtos Vendidos', totalProductsSold],
-        ['Total de Clientes Atendidos', totalCustomers],
-        ['Taxa de Crescimento', `${growthRate.toFixed(2)}%`]
-      ];
+      // Cabeçalho
+      csvContent += "Relatório de Vendas - " + new Date().toLocaleDateString('pt-BR') + "\r\n\r\n";
       
-      const resumoSheet = XLSX.utils.aoa_to_sheet(resumoData);
-      XLSX.utils.book_append_sheet(wb, resumoSheet, 'Resumo Geral');
+      // Resumo Geral
+      csvContent += "Resumo Geral\r\n";
+      csvContent += "Métrica,Valor\r\n";
+      csvContent += `Total de Vendas,${totalSales}\r\n`;
+      csvContent += `Ticket Médio,${averageTicket}\r\n`;
+      csvContent += `Total de Produtos Vendidos,${totalProductsSold}\r\n`;
+      csvContent += `Total de Clientes Atendidos,${totalCustomers}\r\n`;
+      csvContent += `Taxa de Crescimento,${growthRate.toFixed(2)}%\r\n\r\n`;
       
       // Vendas por período
-      const vendasData = [
-        ['Período', 'Total'],
-        ...salesData[dateRange].map(item => [item.name, item.total])
-      ];
-      
-      const vendasSheet = XLSX.utils.aoa_to_sheet(vendasData);
-      XLSX.utils.book_append_sheet(wb, vendasSheet, 'Vendas por Período');
+      csvContent += `Vendas por Período (${dateRange})\r\n`;
+      csvContent += "Período,Total\r\n";
+      salesData[dateRange].forEach((item: any) => {
+        csvContent += `${item.name},${item.total}\r\n`;
+      });
+      csvContent += "\r\n";
       
       // Produtos mais vendidos
-      const produtosData = [
-        ['Produto', 'Quantidade'],
-        ...topProductsData.map(product => [product.name, product.quantity])
-      ];
-      
-      const produtosSheet = XLSX.utils.aoa_to_sheet(produtosData);
-      XLSX.utils.book_append_sheet(wb, produtosSheet, 'Produtos Mais Vendidos');
-      
-      // Categorias de produtos
-      const categoriasData = [
-        ['Categoria', 'Quantidade'],
-        ...productCategoryData.map(category => [category.name, category.value])
-      ];
-      
-      const categoriasSheet = XLSX.utils.aoa_to_sheet(categoriasData);
-      XLSX.utils.book_append_sheet(wb, categoriasSheet, 'Vendas por Categoria');
+      csvContent += "Produtos Mais Vendidos\r\n";
+      csvContent += "Produto,Quantidade\r\n";
+      topProductsData.forEach((product: any) => {
+        csvContent += `${product.name},${product.quantity}\r\n`;
+      });
+      csvContent += "\r\n";
       
       // Análise de estoque
-      const estoqueData = [
-        ['Produto', 'Estoque', 'Status'],
-        ...stockAnalysisData.critical.map(product => [product.name, product.stock, 'Crítico']),
-        ...stockAnalysisData.low.map(product => [product.name, product.stock, 'Baixo'])
-      ];
+      csvContent += "Análise de Estoque\r\n";
+      csvContent += "Produto,Estoque,Status\r\n";
+      stockAnalysisData.critical.forEach(product => {
+        csvContent += `${product.name},${product.stock},Crítico\r\n`;
+      });
+      stockAnalysisData.low.forEach(product => {
+        csvContent += `${product.name},${product.stock},Baixo\r\n`;
+      });
       
-      const estoqueSheet = XLSX.utils.aoa_to_sheet(estoqueData);
-      XLSX.utils.book_append_sheet(wb, estoqueSheet, 'Análise de Estoque');
+      // Criar link para download
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `relatorio-vendas-${dateRange}-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
+      document.body.appendChild(link);
       
-      // Salvar o arquivo
-      const today = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-      XLSX.writeFile(wb, `relatorio-vendas-${dateRange}-${today}.xlsx`);
+      // Trigger download
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
       
     } catch (error) {
       console.error('Erro ao exportar para Excel:', error);
+      alert('Erro ao gerar Excel. Verifique o console para mais detalhes.');
     }
   };
   
@@ -746,20 +778,10 @@ const ReportsPage = () => {
               <AreaChart
                 data={formatSalesDataForChart(salesData[dateRange])}
                 index="name"
-                categories={['total']}
+                valueKey="total"
                 colors={['#8b5cf6']}
-                valueFormatter={(value) => formatCurrency(value)}
-                className="aspect-[4/3]"
-                showLegend={false}
-                showXAxis={true}
-                showYAxis={true}
                 yAxisWidth={60}
-                showAnimation={true}
-                curveType="monotone"
-                showGridLines={false}
-                showGradient={true}
-                startEndOnly={false}
-                autoMinValue={true}
+                className="aspect-[4/3]"
               />
             </CardContent>
           </Card>
@@ -778,9 +800,8 @@ const ReportsPage = () => {
                 <RechartPieChart
                   data={productCategoryData}
                   index="name"
-                  categories={['value']}
+                  valueKey="value"
                   colors={['#8b5cf6', '#4f46e5', '#2563eb', '#3b82f6', '#60a5fa']}
-                  valueFormatter={(value) => `${value} unidades`}
                   className="aspect-[4/3]"
                 />
               </CardContent>
@@ -796,9 +817,8 @@ const ReportsPage = () => {
                 <RechartBarChart
                   data={topProductsData}
                   index="name"
-                  categories={['quantity']}
+                  valueKey="quantity"
                   colors={['#8b5cf6']}
-                  valueFormatter={(value) => `${value} un.`}
                   className="aspect-[4/3]"
                 />
               </CardContent>
