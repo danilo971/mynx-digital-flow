@@ -138,7 +138,7 @@ const ChartTooltipContent = React.forwardRef<
       }
 
       const [item] = payload
-      const key = `${labelKey || item.dataKey || item.name || "value"}`
+      const key = `${labelKey || item?.dataKey || item?.name || "value"}`
       const itemConfig = getPayloadConfigFromPayload(config, item, key)
       const value =
         !labelKey && typeof label === "string"
@@ -185,13 +185,13 @@ const ChartTooltipContent = React.forwardRef<
         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
           {payload.map((item, index) => {
-            const key = `${nameKey || item.name || item.dataKey || "value"}`
+            const key = `${nameKey || item?.name || item?.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color || item.payload.fill || item.color
+            const indicatorColor = color || item?.payload?.fill || item?.color
 
             return (
               <div
-                key={item.dataKey}
+                key={`${item?.dataKey || index}`}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
@@ -285,12 +285,12 @@ const ChartLegendContent = React.forwardRef<
         )}
       >
         {payload.map((item) => {
-          const key = `${nameKey || item.dataKey || "value"}`
+          const key = `${nameKey || item?.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (
             <div
-              key={item.value}
+              key={item?.value || key}
               className={cn(
                 "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground"
               )}
@@ -301,7 +301,7 @@ const ChartLegendContent = React.forwardRef<
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"
                   style={{
-                    backgroundColor: item.color,
+                    backgroundColor: item?.color,
                   }}
                 />
               )}
@@ -318,15 +318,15 @@ ChartLegendContent.displayName = "ChartLegend"
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(
   config: ChartConfig,
-  payload: unknown,
+  payload: any,
   key: string
 ) {
-  if (typeof payload !== "object" || payload === null) {
+  if (!payload || typeof payload !== "object") {
     return undefined
   }
 
   const payloadPayload =
-    "payload" in payload &&
+    payload?.payload &&
     typeof payload.payload === "object" &&
     payload.payload !== null
       ? payload.payload
@@ -354,320 +354,70 @@ function getPayloadConfigFromPayload(
     : config[key as keyof typeof config]
 }
 
-// Add the AreaChart component
+// Add the AreaChart component - Simplified for better compatibility
 const AreaChart = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof ChartContainer> & {
-    data: Record<string, unknown>[]
-    categories: string[]
-    index: string
-    colors?: string[]
-    valueFormatter?: (value: number) => string
-    className?: string
-  }
+  React.ComponentProps<typeof ChartContainer>
 >(
   (
     {
-      data,
-      categories,
-      colors = ["#2563eb", "#f59e0b", "#4ade80"],
-      index,
-      valueFormatter = (value: number) => `${value}`,
+      className,
       ...props
     },
     ref
   ) => {
-    const categoryColors = React.useMemo(() => {
-      return Object.fromEntries(
-        categories.map((category, i) => [
-          category,
-          { color: colors[i % colors.length] },
-        ])
-      )
-    }, [categories, colors])
-
     return (
       <ChartContainer
         ref={ref}
+        className={className}
         {...props}
-        config={categoryColors}
-      >
-        <RechartsPrimitive.AreaChart data={data}>
-          <defs>
-            {categories.map((category, i) => (
-              <linearGradient
-                key={category}
-                id={`gradient-${category}`}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop
-                  offset="0%"
-                  stopColor={colors[i % colors.length]}
-                  stopOpacity={0.45}
-                />
-                <stop
-                  offset="100%"
-                  stopColor={colors[i % colors.length]}
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            ))}
-          </defs>
-          <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-          <RechartsPrimitive.XAxis
-            dataKey={index}
-            tickLine={false}
-            axisLine={false}
-          />
-          <RechartsPrimitive.YAxis
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={valueFormatter}
-          />
-          <RechartsPrimitive.Tooltip
-            content={
-              <ChartTooltipContent
-                labelFormatter={value => (
-                  <span className="font-medium">
-                    {value as React.ReactNode}
-                  </span>
-                )}
-                formatter={(value, _, __, ___, item) => (
-                  <div className="flex w-full flex-wrap items-center gap-2">
-                    <div
-                      className="h-2 w-2 shrink-0 rounded-[2px]"
-                      style={{
-                        backgroundColor: colors[
-                          categories.findIndex(
-                            category => String(category) === String(item.dataKey)
-                          ) % colors.length
-                        ]
-                      }}
-                    />
-                    <div className="flex flex-1 items-center justify-between gap-2">
-                      <span className="font-medium text-muted-foreground">
-                        {item.dataKey}
-                      </span>
-                      <span className="font-medium tabular-nums">
-                        {valueFormatter(value as number)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              />
-            }
-          />
-          {categories.map((category, i) => (
-            <RechartsPrimitive.Area
-              key={category}
-              type="monotone"
-              dataKey={category}
-              stackId={1}
-              stroke={colors[i % colors.length]}
-              strokeWidth={2}
-              fill={`url(#gradient-${category})`}
-            />
-          ))}
-        </RechartsPrimitive.AreaChart>
-      </ChartContainer>
+      />
     )
   }
 )
 AreaChart.displayName = "AreaChart"
 
-// Add the BarChart component
+// Add the BarChart component - Simplified for better compatibility
 const BarChart = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof ChartContainer> & {
-    data: Record<string, unknown>[]
-    categories: string[]
-    index: string
-    colors?: string[]
-    valueFormatter?: (value: number) => string
-    className?: string
-  }
+  React.ComponentProps<typeof ChartContainer>
 >(
   (
     {
-      data,
-      categories,
-      colors = ["#2563eb", "#f59e0b", "#4ade80"],
-      index,
-      valueFormatter = (value: number) => `${value}`,
+      className,
       ...props
     },
     ref
   ) => {
-    const categoryColors = React.useMemo(() => {
-      return Object.fromEntries(
-        categories.map((category, i) => [
-          category,
-          { color: colors[i % colors.length] },
-        ])
-      )
-    }, [categories, colors])
-
     return (
       <ChartContainer
         ref={ref}
+        className={className}
         {...props}
-        config={categoryColors}
-      >
-        <RechartsPrimitive.BarChart data={data}>
-          <RechartsPrimitive.CartesianGrid
-            strokeDasharray="3 3"
-            stroke="#ccc"
-          />
-          <RechartsPrimitive.XAxis
-            dataKey={index}
-            tickLine={false}
-            axisLine={false}
-          />
-          <RechartsPrimitive.YAxis
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={valueFormatter}
-          />
-          <RechartsPrimitive.Tooltip
-            content={
-              <ChartTooltipContent
-                labelFormatter={value => (
-                  <span className="font-medium">
-                    {value as React.ReactNode}
-                  </span>
-                )}
-                formatter={(value, _, __, ___, item) => (
-                  <div className="flex w-full flex-wrap items-center gap-2">
-                    <div
-                      className="h-2 w-2 shrink-0 rounded-[2px]"
-                      style={{
-                        backgroundColor: colors[
-                          categories.findIndex(
-                            category => String(category) === String(item.dataKey)
-                          ) % colors.length
-                        ]
-                      }}
-                    />
-                    <div className="flex flex-1 items-center justify-between gap-2">
-                      <span className="font-medium text-muted-foreground">
-                        {item.dataKey}
-                      </span>
-                      <span className="font-medium tabular-nums">
-                        {valueFormatter(value as number)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              />
-            }
-          />
-          {categories.map((category, i) => (
-            <RechartsPrimitive.Bar
-              key={category}
-              dataKey={category}
-              fill={colors[i % colors.length]}
-            />
-          ))}
-        </RechartsPrimitive.BarChart>
-      </ChartContainer>
+      />
     )
   }
 )
 BarChart.displayName = "BarChart"
 
-// Add the PieChart component
+// Add the PieChart component - Simplified for better compatibility
 const PieChart = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof ChartContainer> & {
-    data: Record<string, unknown>[]
-    category: string
-    index: string
-    colors?: string[]
-    valueFormatter?: (value: number) => string
-    className?: string
-  }
+  React.ComponentProps<typeof ChartContainer>
 >(
   (
     {
-      data,
-      category,
-      index,
-      colors = ["#2563eb", "#f59e0b", "#4ade80", "#8b5cf6", "#ec4899"],
-      valueFormatter = (value: number) => `${value}`,
+      className,
       ...props
     },
     ref
   ) => {
-    const indexValues = React.useMemo(() => {
-      return data.map(item => item[index] as string)
-    }, [data, index])
-
-    const indexColors = React.useMemo(() => {
-      return Object.fromEntries(
-        indexValues.map((indexValue, i) => [
-          indexValue,
-          { color: colors[i % colors.length] },
-        ])
-      )
-    }, [indexValues, colors])
-
     return (
       <ChartContainer
         ref={ref}
+        className={className}
         {...props}
-        config={indexColors}
-      >
-        <RechartsPrimitive.PieChart>
-          <RechartsPrimitive.Pie
-            data={data}
-            dataKey={category}
-            nameKey={index}
-            cx="50%"
-            cy="50%"
-            outerRadius="90%"
-            innerRadius="60%"
-            strokeWidth={0}
-          >
-            {data.map((_, i) => (
-              <RechartsPrimitive.Cell
-                key={`cell-${i}`}
-                fill={colors[i % colors.length]}
-              />
-            ))}
-          </RechartsPrimitive.Pie>
-          <RechartsPrimitive.Tooltip
-            content={
-              <ChartTooltipContent
-                labelKey={index}
-                nameKey={index}
-                formatter={(value, name) => (
-                  <div className="flex w-full flex-wrap items-center gap-2">
-                    <div
-                      className="h-2 w-2 shrink-0 rounded-[2px]"
-                      style={{
-                        backgroundColor: colors[
-                          indexValues.findIndex(i => i === name) % colors.length
-                        ]
-                      }}
-                    />
-                    <div className="flex flex-1 items-center justify-between gap-2">
-                      <span className="font-medium text-muted-foreground">
-                        {name}
-                      </span>
-                      <span className="font-medium tabular-nums">
-                        {valueFormatter(value as number)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              />
-            }
-          />
-        </RechartsPrimitive.PieChart>
-      </ChartContainer>
+      />
     )
   }
 )
@@ -684,3 +434,4 @@ export {
   BarChart,
   PieChart
 }
+

@@ -4,8 +4,9 @@ import { FileText, Calendar, BarChart, PieChart, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AreaChart, BarChart as RechartBarChart, PieChart as RechartPieChart } from '@/components/ui/chart';
+import { ChartContainer } from '@/components/ui/chart';
 import { supabase } from '@/integrations/supabase/client';
+import * as RechartsPrimitive from "recharts";
 
 type DateRange = 'day' | 'week' | 'month' | 'year';
 
@@ -775,14 +776,38 @@ const ReportsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
-              <AreaChart
-                data={formatSalesDataForChart(salesData[dateRange])}
-                index="name"
-                valueKey="total"
-                colors={['#8b5cf6']}
-                yAxisWidth={60}
+              <ChartContainer
                 className="aspect-[4/3]"
-              />
+                config={{
+                  total: { color: "#8b5cf6" }
+                }}
+              >
+                <RechartsPrimitive.AreaChart 
+                  data={formatSalesDataForChart(salesData[dateRange]) || []}
+                >
+                  <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                  <RechartsPrimitive.XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <RechartsPrimitive.YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => formatCurrency(value)}
+                  />
+                  <RechartsPrimitive.Tooltip />
+                  <RechartsPrimitive.Area
+                    type="monotone"
+                    dataKey="total"
+                    stackId={1}
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fill="#8b5cf6"
+                    fillOpacity={0.2}
+                  />
+                </RechartsPrimitive.AreaChart>
+              </ChartContainer>
             </CardContent>
           </Card>
         </TabsContent>
@@ -797,13 +822,35 @@ const ReportsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <RechartPieChart
-                  data={productCategoryData}
-                  index="name"
-                  valueKey="value"
-                  colors={['#8b5cf6', '#4f46e5', '#2563eb', '#3b82f6', '#60a5fa']}
+                <ChartContainer
                   className="aspect-[4/3]"
-                />
+                  config={{
+                    category: { color: "#8b5cf6" }
+                  }}
+                >
+                  <RechartsPrimitive.PieChart>
+                    <RechartsPrimitive.Pie
+                      data={productCategoryData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius="90%"
+                      innerRadius="60%"
+                      strokeWidth={0}
+                      fill="#8b5cf6"
+                    >
+                      {productCategoryData && productCategoryData.map ? productCategoryData.map((entry, index) => (
+                        <RechartsPrimitive.Cell 
+                          key={`cell-${index}`} 
+                          fill={['#8b5cf6', '#4f46e5', '#2563eb', '#3b82f6', '#60a5fa'][index % 5]} 
+                        />
+                      )) : null}
+                    </RechartsPrimitive.Pie>
+                    <RechartsPrimitive.Tooltip formatter={(value) => [`${value}`, 'Quantidade']} />
+                    <RechartsPrimitive.Legend />
+                  </RechartsPrimitive.PieChart>
+                </ChartContainer>
               </CardContent>
             </Card>
             <Card className="col-span-1">
@@ -814,13 +861,29 @@ const ReportsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <RechartBarChart
-                  data={topProductsData}
-                  index="name"
-                  valueKey="quantity"
-                  colors={['#8b5cf6']}
+                <ChartContainer
                   className="aspect-[4/3]"
-                />
+                  config={{
+                    quantity: { color: "#8b5cf6" }
+                  }}
+                >
+                  <RechartsPrimitive.BarChart
+                    data={topProductsData}
+                    layout="vertical"
+                    margin={{ left: 120 }}
+                  >
+                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                    <RechartsPrimitive.XAxis type="number" />
+                    <RechartsPrimitive.YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={100} 
+                      tick={{ fontSize: 12 }}
+                    />
+                    <RechartsPrimitive.Tooltip />
+                    <RechartsPrimitive.Bar dataKey="quantity" fill="#8b5cf6" />
+                  </RechartsPrimitive.BarChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           </div>
