@@ -159,10 +159,6 @@ const LoginPage = () => {
           </p>
         </div>
       </motion.div>
-
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        Use admin@example.com / password para testar como administrador
-      </p>
     </div>
   );
 };
