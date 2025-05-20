@@ -208,22 +208,6 @@ const POSPage = () => {
   
   const currentDate = new Date().toLocaleDateString('pt-BR');
   
-  // Fix the type comparison error (line 49)
-  // Assuming it's something like this:
-  const handleQuantityChange = (value: string) => {
-    // Convert string to number before comparison
-    const numericValue = Number(value);
-    
-    // Change from:
-    // if (numericValue == 0) // error: comparing number and string
-    // To:
-    if (numericValue === 0) {
-      // Handle zero quantity case
-    }
-    
-    // ... rest of the function
-  };
-  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">

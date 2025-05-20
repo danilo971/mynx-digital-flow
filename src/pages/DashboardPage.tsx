@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
-
+  
   // Estados para armazenar os valores reais
   const [totalVendas, setTotalVendas] = useState(0);
   const [estoque, setEstoque] = useState(0);
@@ -18,7 +18,7 @@ const DashboardPage = () => {
   const [vendasSemanais, setVendasSemanais] = useState([]);
   const [produtosMaisVendidos, setProdutosMaisVendidos] = useState([]);
   const [vendasRecentes, setVendasRecentes] = useState([]);
-
+  
   const currentDate = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -35,13 +35,13 @@ const DashboardPage = () => {
   const getUltimas7Semanas = () => {
     const datas = [];
     const hoje = new Date();
-
+    
     for (let i = 6; i >= 0; i--) {
       const data = new Date();
       data.setDate(hoje.getDate() - (i * 7));
       datas.push(data.toISOString());
     }
-
+    
     return datas;
   };
 
@@ -67,59 +67,59 @@ const DashboardPage = () => {
         const { count: countVendas } = await supabase
           .from('sales')
           .select('*', { count: 'exact', head: true });
-
+        
         setTotalVendas(countVendas || 0);
-
+        
         // 2. Estoque total (soma do estoque de todos os produtos)
         const { data: dadosEstoque } = await supabase
           .from('products')
           .select('stock');
-
+        
         const totalEstoque = dadosEstoque?.reduce((acc, item) => acc + item.stock, 0) || 0;
         setEstoque(totalEstoque);
-
+        
         // 3. Produtos cadastrados (contagem de registros na tabela products)
         const { count: countProdutos } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true });
-
+        
         setProdutosCadastrados(countProdutos || 0);
-
+        
         // 4. Faturamento do mês (soma do total das vendas do mês atual)
         const inicioMes = getInicioMesAtual();
         const { data: vendasMes } = await supabase
           .from('sales')
           .select('total')
           .gte('created_at', inicioMes);
-
+        
         const totalMes = vendasMes?.reduce((acc, item) => acc + item.total, 0) || 0;
         setFaturamentoMes(totalMes);
-
+        
         // 5. Vendas semanais (últimas 7 semanas)
         const datas = getUltimas7Semanas();
         const dadosVendasSemanais = [];
-
+        
         for (let i = 0; i < datas.length - 1; i++) {
           const { data: vendasSemana } = await supabase
             .from('sales')
             .select('total')
             .gte('created_at', datas[i])
             .lt('created_at', datas[i + 1]);
-
+          
           const totalSemana = vendasSemana?.reduce((acc, item) => acc + item.total, 0) || 0;
-
+          
           // Formatar data para exibição (semana X)
           const dataInicio = new Date(datas[i]);
           const semana = `Sem ${i+1}`;
-
+          
           dadosVendasSemanais.push({
             name: semana,
             total: totalSemana
           });
         }
-
+        
         setVendasSemanais(dadosVendasSemanais);
-
+        
         // 6. Produtos mais vendidos (top 5 do mês)
         const { data: itensMes } = await supabase
           .from('sale_items')
@@ -132,10 +132,10 @@ const DashboardPage = () => {
             )
           `)
           .gte('created_at', inicioMes);
-
+        
         // Agrupar por produto e somar quantidades
         const produtosAgrupados = {};
-
+        
         itensMes?.forEach(item => {
           if (!produtosAgrupados[item.product_id]) {
             produtosAgrupados[item.product_id] = {
@@ -145,17 +145,17 @@ const DashboardPage = () => {
               valor: item.products?.price || 0
             };
           }
-
+          
           produtosAgrupados[item.product_id].quantidade += item.quantity;
         });
-
+        
         // Converter para array, ordenar e pegar os top 5
         const produtosArray = Object.values(produtosAgrupados)
           .sort((a, b) => b.quantidade - a.quantidade)
           .slice(0, 5);
-
+        
         setProdutosMaisVendidos(produtosArray);
-
+        
         // 7. Vendas recentes (últimas 5 vendas)
         const { data: ultimasVendas } = await supabase
           .from('sales')
@@ -168,16 +168,16 @@ const DashboardPage = () => {
           `)
           .order('created_at', { ascending: false })
           .limit(5);
-
+        
         setVendasRecentes(ultimasVendas || []);
-
+        
       } catch (error) {
         console.error('Erro ao buscar dados:', error);
       }
     };
-
+    
     fetchDados();
-
+    
     // Configurar subscription para atualização em tempo real
     const salesSubscription = supabase
       .channel('sales-changes')
@@ -189,7 +189,7 @@ const DashboardPage = () => {
         fetchDados(); // Recarregar dados quando houver mudanças
       })
       .subscribe();
-
+      
     const productsSubscription = supabase
       .channel('products-changes')
       .on('postgres_changes', { 
@@ -200,7 +200,7 @@ const DashboardPage = () => {
         fetchDados(); // Recarregar dados quando houver mudanças
       })
       .subscribe();
-
+      
     const saleItemsSubscription = supabase
       .channel('sale-items-changes')
       .on('postgres_changes', { 
@@ -211,7 +211,7 @@ const DashboardPage = () => {
         fetchDados(); // Recarregar dados quando houver mudanças
       })
       .subscribe();
-
+    
     // Limpar subscriptions ao desmontar
     return () => {
       salesSubscription.unsubscribe();
@@ -335,12 +335,10 @@ const DashboardPage = () => {
             <CardDescription>Análise das últimas 7 semanas</CardDescription>
           </CardHeader>
           <CardContent>
-            <BarChart
             <AreaChart
               data={vendasSemanais}
               index="name"
               categories={['total']}
-              colors={['blue']}
               colors={['#8b5cf6']}
               valueFormatter={(value) => formatarMoeda(value)}
               className="aspect-[4/3]"
