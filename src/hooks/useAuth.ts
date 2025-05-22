@@ -1,8 +1,9 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useTenantStore } from '@/store/useTenantStore';
+import { useSupabase } from '@/hooks/useSupabase';
 
 export interface UserWithAvatar {
   id: string;
@@ -26,14 +27,18 @@ export function useAuth() {
     user,
     isAuthenticated,
     isLoading,
+    isSystemAdmin,
     login,
     logout,
     signup,
     getProfile
   } = useAuthStore();
   
+  const { currentTenant, tenants, fetchTenants } = useTenantStore();
+  
   const [profile, setProfile] = useState<UserWithAvatar | null>(null);
   const navigate = useNavigate();
+  const { isTenantConnection } = useSupabase();
 
   // Transform the user into a format with avatar property for compatibility
   useEffect(() => {
@@ -50,6 +55,8 @@ export function useAuth() {
   const handleLogin = async (email: string, password: string) => {
     const success = await login(email, password);
     if (success) {
+      // After login, fetch tenants
+      await fetchTenants();
       navigate('/');
     }
     return success;
@@ -72,9 +79,13 @@ export function useAuth() {
     user: profile,
     isAuthenticated,
     isLoading,
+    isSystemAdmin,
     login: handleLogin,
     signup: handleSignup,
     logout: handleLogout,
     getProfile,
+    currentTenant,
+    hasTenants: tenants.length > 0,
+    isTenantConnection,
   };
 }

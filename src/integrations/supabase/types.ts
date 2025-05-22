@@ -48,6 +48,45 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          active: boolean | null
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          id: string
+          is_system_admin: boolean | null
+          name: string
+          permissions: Json | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          is_system_admin?: boolean | null
+          name: string
+          permissions?: Json | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          is_system_admin?: boolean | null
+          name?: string
+          permissions?: Json | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       sale_items: {
         Row: {
           created_at: string
@@ -126,6 +165,74 @@ export type Database = {
           payment_method?: string | null
           status?: string
           total?: number
+        }
+        Relationships: []
+      }
+      tenant_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          status: string | null
+          supabase_anon_key: string
+          supabase_service_key: string | null
+          supabase_url: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          status?: string | null
+          supabase_anon_key: string
+          supabase_service_key?: string | null
+          supabase_url: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          supabase_anon_key?: string
+          supabase_service_key?: string | null
+          supabase_url?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

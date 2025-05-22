@@ -1,8 +1,8 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTenantStore } from './useTenantStore';
 
 type User = {
   id: string;
@@ -17,6 +17,7 @@ type AuthState = {
   session: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isSystemAdmin: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -64,6 +65,7 @@ const fetchProfile = async (userId: string) => {
       email: data.email,
       avatar_url: data.avatar_url,
       role: data.role || 'user',
+      is_system_admin: data.is_system_admin || false,
     };
   } catch (error) {
     console.error('Erro inesperado ao buscar perfil:', error);
@@ -78,6 +80,7 @@ export const useAuthStore = create<AuthState>()(
       session: null,
       isAuthenticated: false,
       isLoading: true,
+      isSystemAdmin: false,
       
       login: async (email: string, password: string) => {
         try {
@@ -110,9 +113,9 @@ export const useAuthStore = create<AuthState>()(
                 },
                 isAuthenticated: true,
                 isLoading: false,
+                isSystemAdmin: true,
               });
               toast.success('Login bem-sucedido como administrador (modo demo)');
-              alert('Login bem-sucedido como administrador (modo demo)');
               return true;
             }
             
@@ -127,14 +130,13 @@ export const useAuthStore = create<AuthState>()(
                 },
                 isAuthenticated: true,
                 isLoading: false,
+                isSystemAdmin: false,
               });
               toast.success('Login bem-sucedido como usuário (modo demo)');
-              alert('Login bem-sucedido como usuário (modo demo)');
               return true;
             }
             
             toast.error('Email ou senha incorretos');
-            alert('Email ou senha incorretos');
             return false;
           }
 
@@ -143,29 +145,35 @@ export const useAuthStore = create<AuthState>()(
             
             if (!profile) {
               toast.error('Erro ao carregar perfil do usuário');
-              alert('Erro ao carregar perfil do usuário');
               return false;
             }
+            
+            // Check if the user is a system admin
+            const isSystemAdmin = 'is_system_admin' in profile && profile.is_system_admin;
             
             set({ 
               user: profile, 
               session: data.session,
               isAuthenticated: true,
               isLoading: false,
+              isSystemAdmin,
             });
             
+            // After successful login, load the user's tenants
+            const { fetchTenants } = useTenantStore.getState();
+            setTimeout(async () => {
+              await fetchTenants();
+            }, 0);
+            
             toast.success(`Bem-vindo, ${profile.name}!`);
-            alert(`Bem-vindo, ${profile.name}!`);
             return true;
           }
           
           toast.error('Erro ao processar login');
-          alert('Erro ao processar login');
           return false;
         } catch (error: any) {
           console.error('Erro inesperado no login:', error);
           toast.error(`Ocorreu um erro durante o login: ${error?.message || 'Erro desconhecido'}`);
-          alert(`Ocorreu um erro durante o login: ${error?.message || 'Erro desconhecido'}`);
           return false;
         }
       },
@@ -258,22 +266,30 @@ export const useAuthStore = create<AuthState>()(
         try {
           console.log('Fazendo logout...');
           set({ isLoading: true });
+          
+          // Reset the tenant state
+          const { setCurrentTenant } = useTenantStore.getState();
+          setCurrentTenant(null);
+          
           const { error } = await supabase.auth.signOut();
           
           if (error) {
             console.error('Erro ao fazer logout:', error);
             toast.error(`Erro ao fazer logout: ${error.message}`);
-            alert(`Erro ao fazer logout: ${error.message}`);
           } else {
             toast.success('Logout realizado com sucesso');
-            alert('Logout realizado com sucesso');
           }
           
-          set({ user: null, session: null, isAuthenticated: false, isLoading: false });
+          set({ 
+            user: null, 
+            session: null, 
+            isAuthenticated: false, 
+            isLoading: false,
+            isSystemAdmin: false,
+          });
         } catch (error: any) {
           console.error('Erro inesperado no logout:', error);
           toast.error(`Ocorreu um erro durante o logout: ${error?.message || 'Erro desconhecido'}`);
-          alert(`Ocorreu um erro durante o logout: ${error?.message || 'Erro desconhecido'}`);
           set({ isLoading: false });
         }
       },
@@ -287,12 +303,23 @@ export const useAuthStore = create<AuthState>()(
           if (data.session?.user) {
             const profile = await fetchProfile(data.session.user.id);
             if (profile) {
+              // Check if the user is a system admin
+              const isSystemAdmin = 'is_system_admin' in profile && profile.is_system_admin;
+              
               set({ 
                 user: profile, 
                 session: data.session,
                 isAuthenticated: true,
                 isLoading: false,
+                isSystemAdmin,
               });
+              
+              // After successful profile fetch, load the user's tenants
+              const { fetchTenants } = useTenantStore.getState();
+              setTimeout(async () => {
+                await fetchTenants();
+              }, 0);
+              
               return profile;
             }
           }
@@ -330,7 +357,16 @@ export const initAuth = async () => {
         await getProfile();
       }, 0);
     } else if (event === 'SIGNED_OUT') {
-      useAuthStore.setState({ user: null, session: null, isAuthenticated: false });
+      // Reset the tenant state
+      const { setCurrentTenant } = useTenantStore.getState();
+      setCurrentTenant(null);
+      
+      useAuthStore.setState({ 
+        user: null, 
+        session: null, 
+        isAuthenticated: false,
+        isSystemAdmin: false,
+      });
     }
   });
 };

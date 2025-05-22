@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuthStore, initAuth } from "./store/useAuthStore";
+import { initTenants } from "./store/useTenantStore";
 import { useThemeStore } from "./store/useThemeStore";
 
 // Pages
@@ -16,6 +17,7 @@ import SalesPage from "./pages/SalesPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import UsersPage from "./pages/UsersPage";
+import TenantsPage from "./pages/TenantsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 import SignupPage from "./pages/SignupPage";
@@ -49,12 +51,38 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// System admin route component
+const SystemAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, isSystemAdmin } = useAuthStore();
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!isSystemAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 const App = () => {
   const { theme } = useThemeStore();
   
-  // Inicializa a autenticação
+  // Inicializa a autenticação e os tenants
   useEffect(() => {
-    initAuth();
+    initAuth().then(() => {
+      // Initialize tenants after auth is initialized
+      initTenants();
+    });
   }, []);
   
   // Apply theme class to html element
@@ -88,6 +116,7 @@ const App = () => {
               <Route path="products" element={<ProductsPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="users" element={<UsersPage />} />
+              <Route path="tenants" element={<TenantsPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
