@@ -36,14 +36,23 @@ export const useTenantStore = create<TenantState>()(
         try {
           set({ isLoading: true });
           
+          // Get the current user
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (!user) {
+            set({ tenants: [], isLoading: false });
+            return [];
+          }
+          
           // Get the user's associated tenants
           const { data: tenantUsers, error: tuError } = await supabase
             .from('tenant_users')
             .select('tenant_id')
-            .eq('user_id', supabase.auth.getUser().then(res => res.data.user?.id));
+            .eq('user_id', user.id);
           
           if (tuError) {
             console.error('Error fetching tenant associations:', tuError);
+            set({ isLoading: false });
             return [];
           }
           

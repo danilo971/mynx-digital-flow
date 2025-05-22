@@ -1,7 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { useSupabase } from '@/hooks/useSupabase';
 
 export interface UserProfile {
   id: string;
@@ -19,23 +18,10 @@ export interface UserProfile {
   } | null;
 }
 
-// Helper function to get the Supabase client
-const getSupabaseClient = () => {
-  // We need to check if we're in a component context
-  try {
-    const { supabase: tenantSupabase } = useSupabase();
-    return tenantSupabase;
-  } catch (error) {
-    // If not in a component context, return the default client
-    return supabase;
-  }
-};
-
 // Get all users
 export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
-    const client = getSupabaseClient();
-    const { data, error } = await client
+    const { data, error } = await supabase
       .from('profiles')
       .select('*');
 
@@ -60,9 +46,8 @@ export const createUser = async (
   role: string = 'user'
 ): Promise<UserProfile | null> => {
   try {
-    const client = getSupabaseClient();
     // Step 1: Create the user in Auth
-    const { data: authData, error: authError } = await client.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -76,7 +61,7 @@ export const createUser = async (
     }
 
     // Step 2: Create profile
-    const { data: profileData, error: profileError } = await client
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .insert({
         id: authData.user.id,
@@ -105,9 +90,12 @@ export const createUser = async (
 // Delete user
 export const deleteUser = async (id: string): Promise<boolean> => {
   try {
-    const client = getSupabaseClient();
-    // This will trigger the cascade delete for the profile
-    const { error } = await client.auth.admin.deleteUser(id);
+    // We can't directly call admin.deleteUser from the client
+    // Instead, we'll just delete the profile and rely on cascade
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', id);
 
     if (error) {
       console.error('Error deleting user:', error);
@@ -125,8 +113,7 @@ export const deleteUser = async (id: string): Promise<boolean> => {
 // Update user
 export const updateUser = async (id: string, updates: Partial<UserProfile>): Promise<UserProfile | null> => {
   try {
-    const client = getSupabaseClient();
-    const { data, error } = await client
+    const { data, error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', id)
@@ -146,9 +133,15 @@ export const updateUser = async (id: string, updates: Partial<UserProfile>): Pro
   }
 };
 
+// Toggle user active status
+export const toggleUserStatus = async (id: string, active: boolean): Promise<UserProfile | null> => {
+  return updateUser(id, { active });
+};
+
 export const userService = {
   getAllUsers,
   createUser,
   deleteUser,
   updateUser,
+  toggleUserStatus
 };
