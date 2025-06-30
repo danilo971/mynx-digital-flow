@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { productService } from '@/services/productService';
 import { toast } from '@/hooks/use-toast';
 import { Database } from '@/lib/database.types';
+import { supabase } from '@/lib/supabase';
 
 export type Product = Database['public']['Tables']['products']['Row'];
 
@@ -38,6 +39,42 @@ export function useProducts() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Set up real-time updates for products
+  useEffect(() => {
+    const channel = supabase
+      .channel('products-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products'
+        },
+        (payload) => {
+          console.log('Produto atualizado em tempo real:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setProducts(prev => [...prev, payload.new as Product]);
+          } else if (payload.eventType === 'UPDATE') {
+            setProducts(prev => 
+              prev.map(product => 
+                product.id === payload.new.id ? payload.new as Product : product
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setProducts(prev => 
+              prev.filter(product => product.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   
   // Open modal to add new product
   const openAddModal = () => {
@@ -65,7 +102,7 @@ export function useProducts() {
         // Update existing product
         const updatedProduct = await productService.updateProduct(selectedProduct.id, productData);
         if (updatedProduct) {
-          setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+          // Real-time update will handle the state change
           toast({
             title: "Produto atualizado",
             description: "O produto foi atualizado com sucesso.",
@@ -76,7 +113,7 @@ export function useProducts() {
         // Create new product
         const newProduct = await productService.createProduct(productData);
         if (newProduct) {
-          setProducts(prev => [...prev, newProduct]);
+          // Real-time update will handle the state change
           toast({
             title: "Produto adicionado",
             description: "O novo produto foi criado com sucesso.",
@@ -101,7 +138,7 @@ export function useProducts() {
     try {
       const success = await productService.deleteProduct(id);
       if (success) {
-        setProducts(prev => prev.filter(p => p.id !== id));
+        // Real-time update will handle the state change
         toast({
           title: "Produto excluído",
           description: "O produto foi excluído com sucesso.",

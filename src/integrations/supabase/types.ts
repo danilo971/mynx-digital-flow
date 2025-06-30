@@ -117,6 +117,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_sale_items_product"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sale_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -241,6 +248,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_stock_availability: {
+        Args: { product_id_param: number; quantity_param: number }
+        Returns: boolean
+      }
       search_products: {
         Args: { search_term: string }
         Returns: {

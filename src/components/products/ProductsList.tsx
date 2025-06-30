@@ -1,7 +1,8 @@
 
-import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Product } from '@/hooks/useProducts';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
@@ -49,6 +50,22 @@ export function ProductsList({ products, loading, onEdit, onDelete }: ProductsLi
       setDeleteProduct(null);
     }
   };
+
+  const getStockBadge = (stock: number) => {
+    if (stock === 0) {
+      return <Badge variant="destructive" className="gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        Sem estoque
+      </Badge>;
+    } else if (stock <= 5) {
+      return <Badge variant="secondary" className="gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        Estoque baixo
+      </Badge>;
+    } else {
+      return <Badge variant="default">Em estoque</Badge>;
+    }
+  };
   
   if (loading) {
     return (
@@ -79,13 +96,17 @@ export function ProductsList({ products, loading, onEdit, onDelete }: ProductsLi
               <TableHead>Nome</TableHead>
               <TableHead>Preço</TableHead>
               <TableHead>Estoque</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Unidade</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.map((product) => (
-              <TableRow key={product.id}>
+              <TableRow 
+                key={product.id}
+                className={product.stock === 0 ? 'bg-destructive/5' : ''}
+              >
                 <TableCell className="font-medium">{product.code}</TableCell>
                 <TableCell>{product.name}</TableCell>
                 <TableCell>
@@ -94,7 +115,14 @@ export function ProductsList({ products, loading, onEdit, onDelete }: ProductsLi
                     currency: 'BRL' 
                   })}
                 </TableCell>
-                <TableCell>{product.stock}</TableCell>
+                <TableCell className="font-medium">
+                  <span className={product.stock <= 5 ? 'text-amber-600' : product.stock === 0 ? 'text-destructive' : ''}>
+                    {product.stock}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {getStockBadge(product.stock)}
+                </TableCell>
                 <TableCell>{product.category}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

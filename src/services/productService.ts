@@ -156,6 +156,54 @@ export const productService = {
       return [];
     }
   },
+
+  /**
+   * Verificar estoque disponível para um produto
+   */
+  async checkStockAvailability(productId: number, quantity: number): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .rpc('check_stock_availability', {
+          product_id_param: productId,
+          quantity_param: quantity
+        });
+
+      if (error) {
+        console.error('Erro ao verificar estoque:', error);
+        return false;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Erro ao verificar disponibilidade de estoque:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Atualizar estoque de um produto manualmente
+   */
+  async updateProductStock(id: number, newStock: number): Promise<Product | null> {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update({ 
+          stock: newStock,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select();
+      
+      if (error) {
+        handleApiError(error, 'Erro ao atualizar estoque');
+        return null;
+      }
+      return data?.[0] || null;
+    } catch (error) {
+      handleApiError(error, 'Erro ao atualizar estoque');
+      return null;
+    }
+  },
   
   /**
    * Get all sales units/categories 

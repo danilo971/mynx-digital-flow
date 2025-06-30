@@ -1,4 +1,3 @@
-
 import { supabase, handleApiError } from '@/lib/supabase';
 import { Database } from '@/integrations/supabase/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,11 +25,61 @@ export type NewSale = {
 
 export const saleService = {
   /**
-   * Criar uma nova venda
+   * Verificar disponibilidade de estoque para um produto
+   */
+  async checkStockAvailability(productId: number, quantity: number): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .rpc('check_stock_availability', {
+          product_id_param: productId,
+          quantity_param: quantity
+        });
+
+      if (error) {
+        console.error('Erro ao verificar estoque:', error);
+        return false;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Erro ao verificar disponibilidade de estoque:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Validar estoque para todos os itens de uma venda
+   */
+  async validateSaleStock(items: SaleProduct[]): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    
+    for (const item of items) {
+      const stockAvailable = await this.checkStockAvailability(item.id, item.quantity);
+      if (!stockAvailable) {
+        errors.push(`Estoque insuficiente para ${item.name} (Código: ${item.code})`);
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  },
+
+  /**
+   * Criar uma nova venda com validação de estoque
    */
   async createSale(saleData: NewSale): Promise<Sale | null> {
     try {
       console.log('Iniciando criação de venda:', saleData);
+      
+      // Validar estoque antes de criar a venda
+      const stockValidation = await this.validateSaleStock(saleData.items);
+      if (!stockValidation.valid) {
+        const errorMessage = stockValidation.errors.join(', ');
+        console.error('Validação de estoque falhou:', errorMessage);
+        throw new Error(`Estoque insuficiente: ${errorMessage}`);
+      }
       
       // Validate numeric fields to prevent NaN issues
       const total = Number(saleData.total) || 0;

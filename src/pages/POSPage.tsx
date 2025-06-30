@@ -1,7 +1,8 @@
+
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { X, Plus, Trash2, ShoppingCart, Printer, Save, Check, CreditCard } from 'lucide-react';
+import { X, Plus, Trash2, ShoppingCart, Printer, Save, Check, CreditCard, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import type { ProductSearchResult } from '@/services/productService';
 import { saleService, type SaleProduct } from '@/services/saleService';
+import { productService } from '@/services/productService';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type SaleForm = {
   quantity: number;
@@ -24,6 +27,7 @@ type SaleForm = {
 const POSPage = () => {
   const [cartItems, setCartItems] = useState<SaleProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null);
+  const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -68,7 +72,7 @@ const POSPage = () => {
   };
   
   // Add product to cart via the Add button
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedProduct) {
       toast({
         variant: "destructive",
@@ -91,6 +95,17 @@ const POSPage = () => {
         variant: "destructive",
         title: "Quantidade inválida",
         description: "A quantidade deve ser maior que zero.",
+      });
+      return;
+    }
+
+    // Verificar estoque disponível
+    const stockAvailable = await productService.checkStockAvailability(selectedProduct.id, safeQuantity);
+    if (!stockAvailable) {
+      toast({
+        variant: "destructive",
+        title: "Estoque insuficiente",
+        description: `Não há estoque suficiente para ${selectedProduct.name}. Verifique a quantidade disponível.`,
       });
       return;
     }
@@ -159,6 +174,21 @@ const POSPage = () => {
       });
       return;
     }
+
+    // Validar estoque novamente antes de finalizar
+    const stockValidation = await saleService.validateSaleStock(cartItems);
+    if (!stockValidation.valid) {
+      setStockValidationErrors(stockValidation.errors);
+      toast({
+        variant: "destructive",
+        title: "Estoque insuficiente",
+        description: "Alguns produtos não têm estoque suficiente. Verifique os itens destacados.",
+      });
+      return;
+    }
+
+    // Limpar erros de validação se tudo estiver ok
+    setStockValidationErrors([]);
     
     try {
       // Prepare sale data
@@ -181,6 +211,7 @@ const POSPage = () => {
         
         // Reset cart and form
         setCartItems([]);
+        setStockValidationErrors([]);
         reset();
         
         // Redirect to sales page
@@ -188,12 +219,12 @@ const POSPage = () => {
       } else {
         throw new Error("Não foi possível finalizar a venda");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);
       toast({
         variant: "destructive",
         title: "Erro ao finalizar venda",
-        description: "Ocorreu um erro ao processar a venda.",
+        description: error?.message || "Ocorreu um erro ao processar a venda.",
       });
     }
   };
@@ -216,6 +247,23 @@ const POSPage = () => {
           <p className="text-muted-foreground">Myn Digital | {currentDate}</p>
         </div>
       </div>
+
+      {/* Stock validation errors */}
+      {stockValidationErrors.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-1">
+              <p className="font-medium">Problemas de estoque encontrados:</p>
+              <ul className="list-disc list-inside text-sm">
+                {stockValidationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Product Selection */}
@@ -435,6 +483,7 @@ const POSPage = () => {
                 className="w-full text-destructive hover:bg-destructive/10" 
                 onClick={() => {
                   setCartItems([]);
+                  setStockValidationErrors([]);
                   reset();
                   setSelectedProduct(null);
                   toast({
