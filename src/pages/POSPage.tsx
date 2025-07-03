@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -28,6 +27,8 @@ const POSPage = () => {
   const [cartItems, setCartItems] = useState<SaleProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null);
   const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
+  const [discount, setDiscount] = useState<string>('');
+  const [freight, setFreight] = useState<string>('');
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -53,9 +54,53 @@ const POSPage = () => {
   // Obter o valor do paymentMethod para UI
   const paymentMethod = watch('paymentMethod');
   
-  // Calculate sale total
-  const calculateTotal = () => {
+  // Função para formatar entrada monetária
+  const formatMonetaryInput = (value: string): string => {
+    // Remove tudo que não é dígito
+    const digits = value.replace(/\D/g, '');
+    
+    if (digits === '') return '';
+    
+    // Converte para número e divide por 100 para ter centavos
+    const number = parseInt(digits, 10) / 100;
+    
+    // Formata como moeda brasileira
+    return number.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+  
+  // Função para converter valor formatado para número
+  const parseMonetaryValue = (value: string): number => {
+    if (!value) return 0;
+    // Remove formatação e converte para número
+    const cleanValue = value.replace(/\./g, '').replace(',', '.');
+    return parseFloat(cleanValue) || 0;
+  };
+  
+  // Handlers para os campos monetários
+  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatMonetaryInput(e.target.value);
+    setDiscount(formatted);
+  };
+  
+  const handleFreightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatMonetaryInput(e.target.value);
+    setFreight(formatted);
+  };
+  
+  // Calculate sale total with discount and freight
+  const calculateSubtotal = () => {
     return cartItems.reduce((total, item) => total + item.subtotal, 0);
+  };
+  
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const discountValue = parseMonetaryValue(discount);
+    const freightValue = parseMonetaryValue(freight);
+    
+    return Math.max(0, subtotal - discountValue + freightValue);
   };
   
   // Handle product selection from search
@@ -197,7 +242,9 @@ const POSPage = () => {
         total: calculateTotal(),
         itemCount: cartItems.reduce((total, item) => total + item.quantity, 0),
         observations: formData.observations,
-        paymentMethod: formData.paymentMethod
+        paymentMethod: formData.paymentMethod,
+        discount: parseMonetaryValue(discount),
+        freight: parseMonetaryValue(freight)
       };
       
       // Send to API
@@ -212,6 +259,8 @@ const POSPage = () => {
         // Reset cart and form
         setCartItems([]);
         setStockValidationErrors([]);
+        setDiscount('');
+        setFreight('');
         reset();
         
         // Redirect to sales page
@@ -432,6 +481,42 @@ const POSPage = () => {
                 </span>
               </div>
               
+              {/* Subtotal */}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span>{formatCurrency(calculateSubtotal())}</span>
+              </div>
+              
+              {/* Discount Field */}
+              <div className="space-y-2">
+                <Label htmlFor="discount" className="text-sm text-muted-foreground">
+                  Desconto (R$):
+                </Label>
+                <Input
+                  id="discount"
+                  type="text"
+                  value={discount}
+                  onChange={handleDiscountChange}
+                  placeholder="0,00"
+                  className="text-right"
+                />
+              </div>
+              
+              {/* Freight Field */}
+              <div className="space-y-2">
+                <Label htmlFor="freight" className="text-sm text-muted-foreground">
+                  Frete (R$):
+                </Label>
+                <Input
+                  id="freight"
+                  type="text"
+                  value={freight}
+                  onChange={handleFreightChange}
+                  placeholder="0,00"
+                  className="text-right"
+                />
+              </div>
+              
               {/* Payment Method */}
               {paymentMethod && (
                 <div className="flex justify-between">
@@ -445,7 +530,7 @@ const POSPage = () => {
               )}
               
               {/* Total */}
-              <div className="flex justify-between text-xl font-bold">
+              <div className="flex justify-between text-xl font-bold border-t pt-4">
                 <span>Total:</span>
                 <span className="text-primary">{formatCurrency(calculateTotal())}</span>
               </div>
@@ -484,6 +569,8 @@ const POSPage = () => {
                 onClick={() => {
                   setCartItems([]);
                   setStockValidationErrors([]);
+                  setDiscount('');
+                  setFreight('');
                   reset();
                   setSelectedProduct(null);
                   toast({
@@ -504,3 +591,4 @@ const POSPage = () => {
 };
 
 export default POSPage;
+
