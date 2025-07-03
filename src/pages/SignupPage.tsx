@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/useAuthStore';
-import PaymentNotification from '@/components/ui/payment-notification';
 
 type FormData = {
   name: string;
@@ -23,7 +22,6 @@ const SignupPage = () => {
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showPaymentNotification, setShowPaymentNotification] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -68,15 +66,7 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Payment notification at the top */}
-      {showPaymentNotification && (
-        <div className="fixed top-0 left-0 right-0 z-50">
-          <PaymentNotification onClose={() => setShowPaymentNotification(false)} />
-        </div>
-      )}
-      
-      <div className={`flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4 ${showPaymentNotification ? 'pt-20' : ''}`}>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -227,7 +217,6 @@ const SignupPage = () => {
           </p>
         </div>
       </motion.div>
-    </div>
     </div>
   );
 };
